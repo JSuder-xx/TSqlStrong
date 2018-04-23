@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{73DFC636-7D57-4584-8F63-0DD649D21914}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TSqlStrong</RootNamespace>
+    <AssemblyName>TSqlStrong</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <LangVersion>7.1</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom, Version=14.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.SqlServer.TransactSql.ScriptDom.14.0.3660.1\lib\net40\Microsoft.SqlServer.TransactSql.ScriptDom.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.ValueTuple, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.4.0\lib\net461\System.ValueTuple.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Ast\ExpressionResult.cs" />
+    <Compile Include="Symbols\Refinement.cs" />
+    <Compile Include="Symbols\RefinementSetCases.cs" />
+    <Compile Include="Symbols\SymbolReference.cs" />
+    <Compile Include="Symbols\RefinementSet.cs" />
+    <Compile Include="Logger\DebuggingLogger.cs" />
+    <Compile Include="Logger\BaseLogger.cs" />
+    <Compile Include="Logger\LambdaLogger.cs" />
+    <Compile Include="Logger\NullLogger.cs" />
+    <Compile Include="Symbols\CaseSensitivity.cs" />
+    <Compile Include="Symbols\SymbolTyping.cs" />
+    <Compile Include="Symbols\SystemTypeNames.cs" />
+    <Compile Include="Tools\ClassHiearchyReflection.cs" />
+    <Compile Include="TypeSystem\ColumnDataType.ColumnName.cs" />
+    <Compile Include="TypeSystem\ColumnDataTypeExtensions.cs" />
+    <Compile Include="TypeSystem\FunctionDataType.cs" />
+    <Compile Include="TypeSystem\NullDataType.cs" />
+    <Compile Include="TypeSystem\SqlDataTypeWithDomain.cs" />
+    <Compile Include="TypeSystem\SqlDataTypeWithKnownSet.cs" />
+    <Compile Include="TypeSystem\NullableDataType.cs" />
+    <Compile Include="Ast\SqlVisitor.cs" />
+    <Compile Include="TypeSystem\StoredProcedureDataType.cs" />
+    <Compile Include="TypeSystem\SubroutineDataType.cs" />
+    <Compile Include="TypeSystem\VoidDataType.cs" />
+    <Compile Include="VerificationResults\Issue.cs" />
+    <Compile Include="VerificationResults\IssueLevel.cs" />
+    <Compile Include="VerificationResults\Messages.cs" />
+    <Compile Include="Ast\Names.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Symbols\StackFrame.cs" />
+    <Compile Include="TypeSystem\ColumnDataType.cs" />
+    <Compile Include="TypeSystem\DataType.cs" />
+    <Compile Include="TypeSystem\SqlDataType.cs" />
+    <Compile Include="TypeSystem\RowDataType.cs" />
+    <Compile Include="TypeSystem\UnknownDataType.cs" />
+    <Compile Include="Logger\ILogger.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="README.md" />
+    <None Include="ROADMAP.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LowSums\LowSums.csproj">
+      <Project>{6b9d73f5-99ed-4fbc-927a-d75bf5ba7791}</Project>
+      <Name>LowSums</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ClassHierarchy.txt" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
