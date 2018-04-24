@@ -14,6 +14,7 @@ namespace TSqlStrong.Symbols
         {
             ("int", SqlDataType.Int),
             ("varchar", SqlDataType.VarChar),
+            ("nvarchar", SqlDataType.NVarChar), 
             ("float", SqlDataType.Numeric),
             ("bit", SqlDataType.Bit),
             ("date", SqlDataType.Date),

@@ -23,6 +23,7 @@ namespace TSqlStrong.TypeSystem
         public readonly static SqlDataType Int = new SqlDataType(ScriptDom.SqlDataTypeOption.Int);
         public readonly static SqlDataType Numeric = new SqlDataType(ScriptDom.SqlDataTypeOption.Real);
         public readonly static SqlDataType VarChar = new SqlDataType(ScriptDom.SqlDataTypeOption.VarChar);
+        public readonly static SqlDataType NVarChar = new SqlDataType(ScriptDom.SqlDataTypeOption.NVarChar);
         public readonly static SqlDataType Money = new SqlDataType(ScriptDom.SqlDataTypeOption.Money);
         public readonly static SqlDataType Date = new SqlDataType(ScriptDom.SqlDataTypeOption.Date);
         public readonly static SqlDataType Time = new SqlDataType(ScriptDom.SqlDataTypeOption.Time);

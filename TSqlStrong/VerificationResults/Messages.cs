@@ -13,11 +13,13 @@ namespace TSqlStrong.VerificationResults
 
         public const string ExpectingASingleExpressionInRow = "Expecting a single expression in row.";
 
-        public const string BinaryMathWithNull = "Attempted a math operation (+, -, /, *) with a possibly null value.";
+        public const string BinaryOperationWithPossibleNull = "Attempted a binary operation (+, -, /, *) with a possibly null value.";
 
         public const string ColumnCountMismatchInUnion = "Column count mismatch in union";
 
         public const string ColumnCountDoesNotMatchCTE = "Column count does not match the specification of CTE.";
+
+        public static string UnknownGlobalVariable(string variableName) => $"Unknown global variable {variableName}.";
 
         public static string TableAlreadyExists(string tableName) =>
             $"Table {tableName} already exists in the current scope.";

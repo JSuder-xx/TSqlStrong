@@ -25,7 +25,7 @@ namespace TSqlStrongSpecifications
         public void describe_SelectStatement()
         {
             StackFrame FrameWithNullableIntX() => new StackFrame().WithSymbol("@x", SqlDataType.Int.ToNullable());
-
+                        
             context["where clause"] = () =>
             {
                 GivenSql("select * from dbo.Master m where m.name = 'Bob'", () =>
@@ -126,7 +126,7 @@ namespace TSqlStrongSpecifications
                 GivenSql("select @x / 50", () =>
                     AndVerifyingWithTopFrame(
                         FrameWithNullableIntX(),
-                        () => ItShouldHaveErrorMessages(Messages.BinaryMathWithNull)
+                        () => ItShouldHaveErrorMessages(Messages.BinaryOperationWithPossibleNull)
                     )
                 );
 
@@ -140,7 +140,7 @@ namespace TSqlStrongSpecifications
                 GivenSql("select case when @x = 0 then -1 else 50 / @x end", () =>
                     AndVerifyingWithTopFrame(
                         FrameWithNullableIntX(),
-                        () => ItShouldHaveErrorMessages(Messages.BinaryMathWithNull)
+                        () => ItShouldHaveErrorMessages(Messages.BinaryOperationWithPossibleNull)
                     )
                 );
 
@@ -201,7 +201,7 @@ namespace TSqlStrongSpecifications
                 GivenSql("select case @x when 0 then -1 else 50 / @x end", () =>
                     AndVerifyingWithTopFrame(
                         FrameWithNullableIntX(),
-                        () => ItShouldHaveErrorMessages(Messages.BinaryMathWithNull)
+                        () => ItShouldHaveErrorMessages(Messages.BinaryOperationWithPossibleNull)
                     )
                 );
             };
@@ -738,7 +738,7 @@ create table Something (id int not null);"
             );
         }
 
-        public void describe_FunctionDeclarations()
+        public void describe_ScalarFunctionDeclarations()
         {
             ExpectSqlToHaveIssuesOnLines(
                 @"create function sum(@x int, @y int) RETURNS INT AS
@@ -793,6 +793,91 @@ GO",
                 9
             );
         }
+
+        public void describe_InlineTableValuedFunctionDeclarations()
+        {
+            ExpectSqlToBeFine(@"
+create table Person (
+    id int not null,
+    firstName varchar(100),
+    lastName varchar(100)
+);
+GO
+
+create function PersonsWithLastName(@lastName varchar(100)) 
+returns table
+as
+return select * from Person where lastName like @lastName;
+go
+");
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+create table Person (
+    id int not null,
+    firstName varchar(100),
+    lastName varchar(100)
+);
+GO
+
+create function PersonsWithLastName(@lastName varchar(100)) 
+returns table
+as
+return select * from Person where lastName like @lastName;
+go
+
+select *
+from
+    -- ERROR: Mis-spelled
+    PersonsWithLastNam('Smith');",
+                18
+                );
+
+
+            ExpectSqlToBeFine(
+                @"
+create table Person (
+    id int not null,
+    firstName varchar(100),
+    lastName varchar(100)
+);
+GO
+
+create function PersonsWithLastName(@lastName varchar(100)) 
+returns table
+as
+return select * from Person where lastName like @lastName;
+go
+
+select *
+from
+    PersonsWithLastName('Smith');");
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+create table Person (
+    id int not null,
+    firstName varchar(100),
+    lastName varchar(100)
+);
+GO
+
+create function PersonsWithLastName(@lastName varchar(100)) 
+returns table
+as
+return select * from Person where lastName like @lastName;
+go
+
+select *
+from
+    -- ERROR: Parameter type mismatch
+    PersonsWithLastName(1);",
+                18
+                );
+
+
+        }
+
 
         public void describe_ProcedureDeclaration()
         {

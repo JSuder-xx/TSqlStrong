@@ -87,9 +87,11 @@ namespace TSqlStrong.Ast
                 new FunctionDataType(
                     name: name,
                     sqlFragment: node.Name,
-                    declaredReturnTypeMaybe: node.ReturnType == null
-                        ? Maybe.None<DataType>()
-                        : CreateDataTypeFromFunctionReturnType(node.ReturnType),
+                    declaredReturnTypeMaybe: 
+                        (node.ReturnType == null) || (node.ReturnType is SelectFunctionReturnType)
+                            // if a select function return type then the user has not explicitly declared a return type, it is implict via processing the expression
+                            ? Maybe.None<DataType>()
+                            : CreateDataTypeFromFunctionReturnType(node.ReturnType),
                     parameters: parameters,
                     typeCheckBody: new Lazy<DataType>(() =>                    
                     {
@@ -101,7 +103,11 @@ namespace TSqlStrong.Ast
                         {
                             // register the parameters so they are in scope during type-check of the body
                             parameters.Do(parameter => _currentFrame.WithSymbol(parameter.Name, parameter.DataType));
-                            return VisitAndReturnResults(node.StatementList).expressionResult.TypeOfExpression;
+                            return VisitAndReturnResults(
+                                node.ReturnType is SelectFunctionReturnType
+                                    ? (TSqlFragment)node.ReturnType
+                                    : node.StatementList
+                            ).expressionResult.TypeOfExpression;
                         }
                         finally
                         {
@@ -409,6 +415,44 @@ namespace TSqlStrong.Ast
             _diagnosticLogger.Exit("QueryDerivedTable");
         }
 
+        public override void ExplicitVisit(SchemaObjectFunctionTableReference node)
+        {
+            var alias = node.Alias == null ? Names.GetAlias(node.SchemaObject) : node.Alias.Value;
+            var name = Names.GetFullTypeName(node.SchemaObject);
+            var maybeDataType = _currentFrame.LookupTypeOfSymbolMaybe(name);
+            _lastExpressionResult = _lastExpressionResult.WithNewSymbolReferenceAndTypeOfExpression(
+                SymbolReference.None,
+                maybeDataType.Match(
+                    some: dataType =>
+                    {
+                        if (dataType.ExpressionType is FunctionDataType asFunctionDataType)
+                        {
+                            CheckPositionalAppliedParameters(
+                                asFunctionDataType,
+                                node,
+                                name,
+                                GetAppliedParameterDataTypes(node.Parameters)
+                            );
+
+                            return asFunctionDataType.ReturnType_CompilingIfNecessary;
+                        }                            
+                        else
+                        {
+                            LogIssue(node, IssueLevel.Error, "Expecting function data type");
+                            return RowDataType.EmptyRow;
+                        }                          
+                    },
+                    none: () =>
+                    {
+                        LogIssue(node, IssueLevel.Warning, Messages.UnknownTypeForBinding(typeName: name, binding: alias));
+                        return new RowDataType(new TypeSystem.ColumnDataType[] { });
+                    }
+                )
+            );
+
+            _currentFrame.WithSymbol(alias, _lastExpressionResult.TypeOfExpression);
+        }
+
         public override void ExplicitVisit(NamedTableReference node)
         {
             var alias = node.Alias == null ? Names.GetAlias(node.SchemaObject) : node.Alias.Value;
@@ -462,7 +506,7 @@ namespace TSqlStrong.Ast
                     {
                         if (symbolTyping.DeclaredType is FunctionDataType asFunction)
                         {
-                            CheckPositionalAppliedParameters(asFunction, routineNameFragment: node.FunctionName, appliedParameterDataTypes: GetAppliedParameterDataTypes(node.Parameters));
+                            CheckPositionalAppliedParameters(asFunction, routineFragment: node.FunctionName, routineName: node.FunctionName.Value, appliedParameterDataTypes: GetAppliedParameterDataTypes(node.Parameters));
                             _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(asFunction.ReturnType_CompilingIfNecessary);
                         }
                         else
@@ -479,37 +523,6 @@ namespace TSqlStrong.Ast
                 LogError(location ?? node.FunctionName, message);
                 _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(UnknownDataType.Instance);
             }
-
-            void CheckPositionalAppliedParameters(SubroutineDataType subRoutine, Identifier routineNameFragment, (ScalarExpression sqlFragment, DataType dataType)[] appliedParameterDataTypes)
-            {
-                if (subRoutine.Parameters.Count() != appliedParameterDataTypes.Length)
-                    LogError(
-                        routineNameFragment,
-                        Messages.CallWithIncorrectNumberOfArguments(
-                            routineNameFragment.Value,
-                            expecting: subRoutine.Parameters.Count(),
-                            actual: appliedParameterDataTypes.Length
-                        )
-                    );
-                else
-                    appliedParameterDataTypes.Zip(
-                        subRoutine.Parameters,
-                        (appliedParameter, declaredParameter) =>
-                        {
-                            appliedParameter.dataType.IsAssignableTo(declaredParameter.DataType)
-                                .DoError(message =>
-                                    LogError(appliedParameter.sqlFragment, Messages.ParameterIssue(parameterName: declaredParameter.Name, message: message))
-                                );
-                            return 1;
-                        });
-            }
-
-            (ScalarExpression sqlFragment, DataType dataType)[] GetAppliedParameterDataTypes(IEnumerable<ScalarExpression> parameters) =>
-                parameters
-                    .Select(parameter =>
-                        (sqlFragment: parameter, dataType: VisitAndReturnResults(parameter).expressionResult.TypeOfExpression)
-                    )
-                    .ToArray();
         }
 
         public override void ExplicitVisit(ExecuteStatement node)
@@ -817,7 +830,7 @@ namespace TSqlStrong.Ast
 
             var nullOperand = (leftType.IsNullOrNullable || rightType.IsNullOrNullable);
             if (nullOperand)
-                LogIssue(node, IssueLevel.Warning, Messages.BinaryMathWithNull);
+                LogIssue(node, IssueLevel.Warning, Messages.BinaryOperationWithPossibleNull);
 
             leftType = NullableDataType.UnwrapIfNull(leftType);
             rightType = NullableDataType.UnwrapIfNull(rightType);
@@ -1070,8 +1083,13 @@ namespace TSqlStrong.Ast
 
         public override void Visit(GlobalVariableExpression node)
         {
-            base.Visit(node);
-            throw new NotImplementedException("GlobalVariableExpression");
+            _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(
+                Symbols.GlobalVariableNames.Lookup(node.Name).Coalesce(() => 
+                {
+                    LogError(node, Messages.UnknownGlobalVariable(node.Name));
+                    return UnknownDataType.Instance;
+                })
+            );
         }
 
         public override void Visit(VariableReference node)
@@ -1158,6 +1176,36 @@ namespace TSqlStrong.Ast
         #endregion
 
         #region Private Accessory 
+
+        private (ScalarExpression sqlFragment, DataType dataType)[] GetAppliedParameterDataTypes(IEnumerable<ScalarExpression> parameters) =>
+            parameters
+                .Select(parameter =>
+                    (sqlFragment: parameter, dataType: VisitAndReturnResults(parameter).expressionResult.TypeOfExpression)
+                )
+                .ToArray();
+
+        private void CheckPositionalAppliedParameters(SubroutineDataType subRoutine, TSqlFragment routineFragment, string routineName, (ScalarExpression sqlFragment, DataType dataType)[] appliedParameterDataTypes)
+        {
+            if (subRoutine.Parameters.Count() != appliedParameterDataTypes.Length)
+                LogError(
+                    routineFragment,
+                    Messages.CallWithIncorrectNumberOfArguments(
+                        routineName,
+                        expecting: subRoutine.Parameters.Count(),
+                        actual: appliedParameterDataTypes.Length
+                    )
+                );
+            else
+            {
+                foreach(var pair in appliedParameterDataTypes.Zip(subRoutine.Parameters, (appliedParameter, subroutineParameter) => (appliedParameter, subroutineParameter)))
+                {
+                    pair.appliedParameter.dataType.IsAssignableTo(pair.subroutineParameter.DataType)
+                        .DoError(message =>
+                            LogError(pair.appliedParameter.sqlFragment, Messages.ParameterIssue(parameterName: pair.subroutineParameter.Name, message: message))
+                        );
+                }
+            }
+        }
 
         private void DropObjects(DropObjectsStatement dropStatement)
         {
@@ -1318,8 +1366,7 @@ namespace TSqlStrong.Ast
             ResolveDataTypeReference(returnType.DataType).ToNullable();
 
         private DataType CreateDataTypeFromFunctionReturnType(SelectFunctionReturnType returnType) =>
-            // TODO: ??? 
-            LogIssueAndReturn(returnType, IssueLevel.Info, "<???>", VisitAndReturnResults(returnType.SelectStatement).expressionResult.TypeOfExpression);
+            VisitAndReturnResults(returnType.SelectStatement).expressionResult.TypeOfExpression;
 
         private IMaybe<DataType> CreateDataTypeFromFunctionReturnType(TableValuedFunctionReturnType returnType) =>
             (returnType.DeclareTableVariableBody?.Definition is TableDefinition)

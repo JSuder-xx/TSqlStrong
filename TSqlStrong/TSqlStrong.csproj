@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Ast\ExpressionResult.cs" />
+    <Compile Include="Symbols\GlobalVariableNames.cs" />
     <Compile Include="Symbols\Refinement.cs" />
     <Compile Include="Symbols\RefinementSetCases.cs" />
     <Compile Include="Symbols\SymbolReference.cs" />
