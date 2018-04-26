@@ -21,7 +21,12 @@ namespace TSqlStrong.Ast
         public static string GetFullTypeName(ScriptDom.SchemaObjectName schemaObject) =>
             schemaObject.SchemaIdentifier == null
                 ? schemaObject.BaseIdentifier.Value
-                : $"{schemaObject.SchemaIdentifier.Value}.{schemaObject.BaseIdentifier.Value}";        
+                : $"{schemaObject.SchemaIdentifier.Value}.{schemaObject.BaseIdentifier.Value}";
+
+        public static ITry<string> GetSymbolName(ScriptDom.IdentifierOrValueExpression identifierOrValue) =>
+            identifierOrValue.Identifier != null ? Try.Success(identifierOrValue.Identifier.Value)
+            : !String.IsNullOrWhiteSpace(identifierOrValue.Value) ? Try.Success(identifierOrValue.Value)
+            : Try.Failure<string>("We do not know how to process ValueExpression at this time");
 
         /// <summary>
         /// Returns a . delimited name from a multipart identifier.

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using ScriptDom = Microsoft.SqlServer.TransactSql.ScriptDom;
 
 using TSqlStrong.VerificationResults;
@@ -68,7 +67,7 @@ namespace TSqlStrong.TypeSystem
 
             if (otherType is SqlDataType otherSqlDataType) 
             {
-                if (SqlDataTypeOption != otherSqlDataType.SqlDataTypeOption)
+                if (!SqlDataTypeOption.CanAssignTo(otherSqlDataType.SqlDataTypeOption))
                     return Fail();
 
                 if (this.SizeOfDomain > otherType.SizeOfDomain)
@@ -83,5 +82,13 @@ namespace TSqlStrong.TypeSystem
         }
 
         public override string ToString() => SqlDataTypeOption.ToString();                        
+    }
+
+    public static class SqlDataTypeOptionExtensions
+    {
+        public static bool CanAssignTo(this ScriptDom.SqlDataTypeOption source, ScriptDom.SqlDataTypeOption dest) =>
+            (source == dest)
+            || ((source == ScriptDom.SqlDataTypeOption.VarChar) && (dest == ScriptDom.SqlDataTypeOption.NVarChar))
+            || ((source == ScriptDom.SqlDataTypeOption.Int) && (dest == ScriptDom.SqlDataTypeOption.Float));
     }
 }

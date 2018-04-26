@@ -29,6 +29,13 @@ namespace LowSums
             return original;
         }
 
+        public static T GetValue<T>(this ITry<T> value) =>        
+            value.Match(
+                success: (val) => val,
+                failure: (message) => new InvalidOperationException(message).AsValue<T>()
+            );
+        
+
         /// <summary>
         /// Converts a value to an error message string if an error, otherwise returns an empty string.
         /// </summary>

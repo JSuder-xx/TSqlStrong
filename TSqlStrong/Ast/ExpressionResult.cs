@@ -14,6 +14,8 @@ namespace TSqlStrong.Ast
         private readonly DataType _typeOfExpression;
         private readonly RefinementSetCases _refinementCases;
 
+        public static readonly ExpressionResult Statement = new ExpressionResult(VoidDataType.Instance);
+
         public ExpressionResult(ISymbolReference symbolReference, DataType typeOfExpression, RefinementSetCases refinementCases)
         {
             _symbolReference = symbolReference;

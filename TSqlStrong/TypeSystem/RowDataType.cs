@@ -55,7 +55,7 @@ namespace TSqlStrong.TypeSystem
                 (columnDataType.Name is ColumnDataType.ColumnName.BaseNamedColumn named)
                     ? mapNamedColumnType(named.Name, columnDataType.DataType)
                         .Match(
-                            some: (newType) => new ColumnDataType(columnDataType.Name, newType),
+                            some: (newType) => columnDataType.WithNewDataType(newType),
                             none: () => columnDataType
                         )
                     : columnDataType;                                         

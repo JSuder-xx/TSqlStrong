@@ -82,3 +82,21 @@ from
 where 
     Num = 2;
 
+with NonRecursive (Value)
+as
+(
+    -- OK: The alias matches
+    select 1 as 'Value'
+)
+select top 10 * from NonRecursive;
+
+-- ERROR: The alias 'CrazyValue' does not match the declared column name of 'Value'
+with NonRecursive (Value)
+as
+(
+    select 1 as 'CrazyValue'
+)
+select top 10 * from NonRecursive;
+
+
+

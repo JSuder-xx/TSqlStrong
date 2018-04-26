@@ -21,6 +21,11 @@ namespace TSqlStrong.VerificationResults
 
         public static string UnknownGlobalVariable(string variableName) => $"Unknown global variable {variableName}.";
 
+        public static string UnknownCursor(string name) => $"Unknown cursor {name}";
+
+        public static string TooManyVariablesSpecifiedForFetch(int columnsInCursor, int variableCount) =>
+            $"Fetch specified {variableCount} variables but the cursor only has {columnsInCursor} columns";
+
         public static string TableAlreadyExists(string tableName) =>
             $"Table {tableName} already exists in the current scope.";
 

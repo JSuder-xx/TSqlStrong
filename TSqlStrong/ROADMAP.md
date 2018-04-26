@@ -7,7 +7,6 @@
     * all cases of table constraints
     * all cases of constraint after table creation.
     * etc..
-  * Cursor statements
   * Handling of type consequences for assignment operations other than = such as +=, -=.
 
 * Configurability of Error levels (None, Warning, Error)

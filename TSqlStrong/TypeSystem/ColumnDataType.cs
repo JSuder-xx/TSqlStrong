@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using LowSums;
-using TSqlStrong.Symbols;
 
 namespace TSqlStrong.TypeSystem
 {
@@ -13,19 +12,26 @@ namespace TSqlStrong.TypeSystem
     {
         private readonly ColumnName.Base _name;
         private readonly DataType _dataType;
+        private readonly IMaybe<TSqlFragment> _definingLocationMaybe;
 
-        public ColumnDataType(ColumnName.Base name, DataType dataType)
+        public ColumnDataType(ColumnName.Base name, DataType dataType, IMaybe<TSqlFragment> definingLocation)
         {
             _name = name;            
             _dataType = dataType;
+            _definingLocationMaybe = definingLocation;
+        }
+
+        public ColumnDataType(ColumnName.Base name, DataType dataType) : this(name, dataType, Maybe.None<TSqlFragment>())
+        {
         }
 
         public ColumnName.Base Name => _name;
 
         public DataType DataType => _dataType;
+        public IMaybe<TSqlFragment> DefiningLocationMaybe => _definingLocationMaybe;
 
         public ColumnDataType WithNewDataType(DataType dataType) =>
-            new ColumnDataType(_name, dataType);
+            new ColumnDataType(_name, dataType, _definingLocationMaybe);
 
         public static ITry<ColumnDataType> Join(ColumnDataType left, ColumnDataType right) =>
             DataType.Disjunction(left.DataType, right.DataType)
@@ -33,7 +39,8 @@ namespace TSqlStrong.TypeSystem
                 .Select(dataType =>
                     new ColumnDataType(
                         name: ColumnName.Anonymous.Instance,
-                        dataType: dataType
+                        dataType: dataType,
+                        definingLocation: Maybe.None<TSqlFragment>()
                     )
                 );
         

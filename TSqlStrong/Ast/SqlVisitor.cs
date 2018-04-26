@@ -178,84 +178,6 @@ namespace TSqlStrong.Ast
 
         #region Statements
 
-        public override void ExplicitVisit(QuerySpecification node)
-        {
-            _currentFrame = new StackFrame(_currentFrame);
-            try
-            {
-                _diagnosticLogger.Enter("QuerySpecification");
-
-                if (node.FromClause != null)
-                {
-                    _diagnosticLogger.Enter("FromClause");
-                    node.FromClause.Accept(this);
-                    _diagnosticLogger.Exit();
-                }
-
-                if (node.WhereClause != null)
-                {
-                    _diagnosticLogger.Enter("WhereClause");
-                    node.WhereClause.Accept(this);
-                    _diagnosticLogger.Exit("WhereClause");
-                }
-                
-                // whatever is returned by select is the type of the row
-                _diagnosticLogger.Enter("SelectElements[]");
-
-                _lastExpressionResult = new ExpressionResult(new RowDataType(
-                    node.SelectElements
-                    .SelectMany(selectElement => SelectElementToColumnTypes(selectElement))
-                    .ToArray()
-                ));
-                _diagnosticLogger.Exit();
-
-                _diagnosticLogger.Exit();
-            }
-            finally
-            {
-                _currentFrame = _currentFrame.LastFrame;
-            }
-        }
-
-        public override void ExplicitVisit(BinaryQueryExpression node)
-        {
-            var (_, firstExpressionResult) = VisitAndReturnResults(node.FirstQueryExpression);
-            var (_, secondExpressionResult) = VisitAndReturnResults(node.SecondQueryExpression);
-            var firstDataType = firstExpressionResult.TypeOfExpression;
-
-            ExpectTypeEvaluatingExpression<DataType, RowDataType>(
-                node: node.FirstQueryExpression,
-                errorMessage: ExpectingRowTypeMessage,
-                val: firstExpressionResult.TypeOfExpression,
-                whenOfProperType: (firstAsRowType) =>
-                    ExpectTypeEvaluatingExpression<DataType, RowDataType>(
-                        node: node.SecondQueryExpression,
-                        errorMessage: ExpectingRowTypeMessage,
-                        val: secondExpressionResult.TypeOfExpression,
-                        whenOfProperType: (secondAsRowType) =>              
-                        {
-                            if (firstAsRowType.ColumnDataTypes.Count() != secondAsRowType.ColumnDataTypes.Count())
-                                LogError(node, Messages.ColumnCountMismatchInUnion);
-                            else                            
-                                _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(
-                                    new RowDataType(
-                                        firstAsRowType.ColumnDataTypes.Zip(
-                                            secondAsRowType.ColumnDataTypes,
-                                            (first, second) =>
-                                                new ColumnDataType(
-                                                    ColumnDataType.ColumnName.TakeNamed(first.Name, second.Name),
-                                                    DataType.Disjunction(first.DataType, second.DataType).Coalesce(UnknownDataType.Instance)
-                                                )
-                                        )
-                                    )
-                                );                                                            
-                        }
-                    )                
-            );
-
-            string ExpectingRowTypeMessage(DataType dataType) => Messages.ExpectingRowTypeButGot(dataType.ToString());
-        }
-
         public override void ExplicitVisit(SelectStatement node)
         {
             if (node.WithCtesAndXmlNamespaces != null)
@@ -285,7 +207,21 @@ namespace TSqlStrong.Ast
                                     LogError(node, Messages.ColumnCountDoesNotMatchCTE);
                                 else
                                 {
-                                    // TODO: Verify any aliases columns match the names of the specified columns
+                                    foreach(var pair in rowDataType.ColumnDataTypes.Zip(cte.Columns, (columnDataType, cteColumn) => (columnDataType, cteColumn)))
+                                    {
+                                        if (pair.columnDataType.Name is ColumnDataType.ColumnName.BaseNamedColumn asNamed)
+                                        {
+                                            if (!String.Equals(asNamed.Name, pair.cteColumn.Value, StringComparison.InvariantCultureIgnoreCase))
+                                                LogError(
+                                                    pair.columnDataType.DefiningLocationMaybe.Coalesce(pair.cteColumn), 
+                                                    Messages.CannotAssignColumnName(
+                                                        source: pair.columnDataType.ToString(),
+                                                        destination: pair.cteColumn.Value
+                                                    )
+                                                );
+                                        }
+                                    }
+
                                     _currentFrame.ReplaceSymbol(
                                         cte.ExpressionName.Value,
                                         ApplyNamesToRowType(cte, rowDataType)
@@ -316,7 +252,8 @@ namespace TSqlStrong.Ast
                         (columnNameIdentifier, columnDataType) =>
                             new ColumnDataType(
                                 new ColumnDataType.ColumnName.Aliased(columnNameIdentifier.Value, CaseSensitivity.CaseInsensitive),
-                                columnDataType.DataType
+                                columnDataType.DataType,
+                                columnDataType.DefiningLocationMaybe
                             )
                     )
                 );
@@ -329,7 +266,8 @@ namespace TSqlStrong.Ast
                     node.ColumnValues.Select(colummValue =>
                         new ColumnDataType(
                             ColumnDataType.ColumnName.Anonymous.Instance,
-                            VisitAndReturnResults(colummValue).expressionResult.TypeOfExpression
+                            VisitAndReturnResults(colummValue).expressionResult.TypeOfExpression,
+                            colummValue.ToMaybe()
                         )
                     )
                 )
@@ -401,9 +339,177 @@ namespace TSqlStrong.Ast
             _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(VoidDataType.Instance);
         }
 
+        public override void ExplicitVisit(PrintStatement node)
+        {
+            VisitAndReturnResults(node.Expression);
+            _lastExpressionResult = ExpressionResult.Statement;
+        }
+
+        public override void ExplicitVisit(DeclareCursorStatement node)
+        {
+            _currentFrame.WithSymbol(
+                node.Name.Value,
+                VisitAndReturnResults(node.CursorDefinition.Select).expressionResult.TypeOfExpression
+            );
+        }
+
+        public override void ExplicitVisit(FetchCursorStatement node)
+        {
+            var name = Names.GetSymbolName(node.Cursor.Name).GetValue();
+            _currentFrame.LookupTypeOfSymbolMaybe(name).Do(
+                none: () =>
+                {
+                    LogError(node.Cursor.Name, Messages.UnknownCursor(name));
+                },
+                some: (cursorTyping) =>
+                {
+                    if (!(cursorTyping.ExpressionType is RowDataType rowDataType))
+                        LogError(node.Cursor, "Internal error: Expecting a row type.");
+                    else if (node.IntoVariables.Count() > rowDataType.ColumnDataTypes.Count())
+                        LogError(
+                            node.IntoVariables.Skip(rowDataType.ColumnDataTypes.Count()).First(), 
+                            Messages.TooManyVariablesSpecifiedForFetch(columnsInCursor: rowDataType.ColumnDataTypes.Count(), variableCount: node.IntoVariables.Count())
+                        );
+                    else
+                    {
+                        foreach(var pair in node.IntoVariables.Zip(rowDataType.ColumnDataTypes, (variable, columnDataType) => (variable, columnDataType)))
+                        {
+                            var (_, variableExpression) = VisitAndReturnResults(pair.variable);
+                            pair.columnDataType.DataType.IsAssignableTo(variableExpression.TypeOfExpression).DoError(error => LogError(pair.variable, error));                            
+                        }
+                    }                        
+                }
+            );
+
+            _lastExpressionResult = ExpressionResult.Statement;
+        }
+
+        public override void ExplicitVisit(OpenCursorStatement node)
+        {
+            CursorStatementWithNoEffects(node);
+        }
+
+        public override void ExplicitVisit(DeallocateCursorStatement node)
+        {
+            CursorStatementWithNoEffects(node);
+        }
+
+        public override void ExplicitVisit(CloseCursorStatement node)
+        {
+            CursorStatementWithNoEffects(node);
+        }
+
+        private void CursorStatementWithNoEffects(CursorStatement node)
+        {
+            var name = Names.GetSymbolName(node.Cursor.Name).GetValue();            
+            _currentFrame.LookupTypeOfSymbolMaybe(name).Do(
+                some: (_) => { },
+                none: () =>
+                {
+                    LogError(node.Cursor.Name, Messages.UnknownCursor(name));
+                }
+            );
+
+            _lastExpressionResult = ExpressionResult.Statement;
+        }
+
         #endregion
 
         #region Row Expressions
+
+        public override void ExplicitVisit(QuerySpecification node)
+        {
+            _currentFrame = new StackFrame(_currentFrame);
+            try
+            {
+                _diagnosticLogger.Enter("QuerySpecification");
+
+                if (node.FromClause != null)
+                {
+                    _diagnosticLogger.Enter("FromClause");
+                    node.FromClause.Accept(this);
+                    _diagnosticLogger.Exit();
+                }
+
+                if (node.WhereClause != null)
+                {
+                    _diagnosticLogger.Enter("WhereClause");
+                    node.WhereClause.Accept(this);
+                    _diagnosticLogger.Exit("WhereClause");
+                }
+
+                _diagnosticLogger.Enter("SelectElements[]");
+
+
+                var rowResult = new RowDataType(
+                        node.SelectElements
+                        .SelectMany(selectElement => SelectElementToColumnTypes(selectElement))
+                        .ToArray()
+                    );
+
+                _lastExpressionResult = node.SelectElements.Any(select => select is SelectSetVariable)
+                    // if setting variables then this is a statement 
+                    ? new ExpressionResult(VoidDataType.Instance)
+                    // otherwise an expression
+                    : new ExpressionResult(rowResult);
+                _diagnosticLogger.Exit();
+
+                _diagnosticLogger.Exit();
+            }
+            finally
+            {
+                _currentFrame = _currentFrame.LastFrame;
+            }
+        }
+
+        public override void ExplicitVisit(BinaryQueryExpression node)
+        {
+            var (_, firstExpressionResult) = VisitAndReturnResults(node.FirstQueryExpression);
+            var (_, secondExpressionResult) = VisitAndReturnResults(node.SecondQueryExpression);
+            var firstDataType = firstExpressionResult.TypeOfExpression;
+
+            ExpectTypeEvaluatingExpression<DataType, RowDataType>(
+                node: node.FirstQueryExpression,
+                errorMessage: ExpectingRowTypeMessage,
+                val: firstExpressionResult.TypeOfExpression,
+                whenOfProperType: (firstAsRowType) =>
+                    ExpectTypeEvaluatingExpression<DataType, RowDataType>(
+                        node: node.SecondQueryExpression,
+                        errorMessage: ExpectingRowTypeMessage,
+                        val: secondExpressionResult.TypeOfExpression,
+                        whenOfProperType: (secondAsRowType) =>
+                        {
+                            if (firstAsRowType.ColumnDataTypes.Count() != secondAsRowType.ColumnDataTypes.Count())
+                                LogError(node, Messages.ColumnCountMismatchInUnion);
+                            else
+                                _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(
+                                    new RowDataType(
+                                        firstAsRowType.ColumnDataTypes.Zip(
+                                            secondAsRowType.ColumnDataTypes,
+                                            (first, second) =>
+                                                new ColumnDataType(
+                                                    ColumnDataType.ColumnName.TakeNamed(first.Name, second.Name),
+                                                    DataType.Disjunction(first.DataType, second.DataType).Coalesce(() =>
+                                                    {
+                                                        var errorReportLocationCandidates = new[] { second.DefiningLocationMaybe, first.DefiningLocationMaybe }.Choose();
+                                                        LogError(
+                                                            (errorReportLocationCandidates.Any()) ? errorReportLocationCandidates.First() : node.SecondQueryExpression,
+                                                            Messages.UnableToJoinTypes(first.DataType.ToString(), second.DataType.ToString())
+                                                        );
+                                                        
+                                                        return UnknownDataType.Instance;
+                                                    }),
+                                                    Maybe.None<TSqlFragment>()
+                                                )
+                                        )
+                                    )
+                                );
+                        }
+                    )
+            );
+
+            string ExpectingRowTypeMessage(DataType dataType) => Messages.ExpectingRowTypeButGot(dataType.ToString());
+        }
 
         public override void ExplicitVisit(QueryDerivedTable node)
         {
@@ -661,6 +767,25 @@ namespace TSqlStrong.Ast
             _currentFrame = originalFrame;
         }
 
+        public override void ExplicitVisit(SelectSetVariable node)
+        {
+            var variableSymbolTypingMaybe = _currentFrame.LookupTypeOfSymbolMaybe(node.Variable.Name);
+            var (_, expressionResult) = VisitAndReturnResults(node.Expression);
+
+            variableSymbolTypingMaybe.Do(
+                some: (variableSymbolTyping) =>
+                    CheckAssignment(
+                        source: expressionResult.TypeOfExpression,
+                        destination: variableSymbolTyping.DeclaredType,
+                        location: node.Variable
+                    ),
+                none: () =>
+                    LogError(node.Variable, Messages.UnableToFindVariable(node.Variable.Name))
+            );
+
+            _lastExpressionResult = ExpressionResult.Statement;
+        }
+
         public override void ExplicitVisit(SetVariableStatement node)
         {
             var (_, expressionResult) = VisitAndReturnResults(node.Expression);
@@ -690,7 +815,7 @@ namespace TSqlStrong.Ast
                     LogIssue(node.Variable, IssueLevel.Error, Messages.UnableToFindVariable(node.Variable.Name))
             );
 
-            _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(VoidDataType.Instance);
+            _lastExpressionResult = ExpressionResult.Statement;
         }
 
         public override void ExplicitVisit(DeclareVariableElement node)
@@ -1044,6 +1169,12 @@ namespace TSqlStrong.Ast
 
         #region Terminal Values 
 
+        public override void ExplicitVisit(CastCall node)
+        {
+            var (_, parameterExpression) = VisitAndReturnResults(node.Parameter);
+            // TODO: Implement a check against all of the X's found here https://docs.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-2017
+            _lastExpressionResult = new ExpressionResult(ResolveDataTypeReference(node.DataType));
+        }
 
         public override void Visit(IntegerLiteral node)
         {
@@ -1054,7 +1185,11 @@ namespace TSqlStrong.Ast
         public override void Visit(StringLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.VarChar(node.Value));
+            _lastExpressionResult = new ExpressionResult(
+                node.IsNational
+                    ? SqlDataTypeWithKnownSet.NVarChar(node.Value)
+                    : SqlDataTypeWithKnownSet.VarChar(node.Value)
+            );
         }
 
         public override void Visit(NullLiteral node)
@@ -1274,39 +1409,41 @@ namespace TSqlStrong.Ast
                 }
             }
         }
-
+        
         private IEnumerable<ColumnDataType> SelectElementToColumnTypes(SelectElement selectElement)
         {
             if (selectElement is SelectScalarExpression selectScalarExpression)
             {
                 var columName = selectScalarExpression.ColumnName;
                 var (_, lastExpressionResult) = this.VisitAndReturnResults(selectScalarExpression.Expression);
-
+                
                 if (columName == null)
                 {
                     return new [] 
                     {
                         lastExpressionResult.TypeOfExpression is ColumnDataType lastColumnType
                         ? lastColumnType
-                        : new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, lastExpressionResult.TypeOfExpression)
+                        : new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, lastExpressionResult.TypeOfExpression, selectScalarExpression.Expression.ToMaybe())
                     };
                 }
-                else if (columName.Identifier != null)
-                {
-                    return new[] 
-                    {
-                        new ColumnDataType(
-                            new ColumnDataType.ColumnName.Aliased(columName.Identifier.Value, _currentFrame.CaseSensitivity),
-                            ColumnDataType.UnwrapIfColumnDataType(lastExpressionResult.TypeOfExpression)
-                        )
-                    };                    
-                }
-                if (columName.ValueExpression is GlobalVariableExpression globalVariableExpression)
-                {
-                    throw new NotImplementedException("Global variable reference in select.");
-                }
                 else
-                    throw new NotImplementedException("Select Scalar without a column name reference.");
+                    return Names.GetSymbolName(columName).Match(
+                        success: (columnNameAsString) =>
+                            new[]
+                            {
+                                new ColumnDataType(
+                                    new ColumnDataType.ColumnName.Aliased(columnNameAsString, _currentFrame.CaseSensitivity),
+                                    ColumnDataType.UnwrapIfColumnDataType(lastExpressionResult.TypeOfExpression),
+                                    selectScalarExpression.Expression.ToMaybe()
+                                )
+                            },
+                        failure: (message) =>
+                        {
+                            throw new NotImplementedException(message);
+                            //if (columName.ValueExpression is GlobalVariableExpression globalVariableExpression)
+                            //    throw new NotImplementedException("Global variable reference in select.");
+                        }
+                    );
             }
             else if (selectElement is SelectSetVariable selectSetVariable)
             {
@@ -1328,7 +1465,7 @@ namespace TSqlStrong.Ast
                 {
                     expressionResult.TypeOfExpression is ColumnDataType lastColumnType
                         ? lastColumnType
-                        : new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, expressionResult.TypeOfExpression)
+                        : new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, expressionResult.TypeOfExpression, selectSetVariable.ToMaybe())
                 };
             }
             else if (selectElement is SelectStarExpression selectStarExpression)
@@ -1345,7 +1482,8 @@ namespace TSqlStrong.Ast
         private ColumnDataType CreateColumnDataTypeFromColumnDefinition(ColumnDefinition cd) =>
             new ColumnDataType(
                 new ColumnDataType.ColumnName.Schema(cd.ColumnIdentifier.Value, _currentFrame.CaseSensitivity),
-                DecorateDataTypeWithConstraints(cd.ColumnIdentifier.Value, cd.Constraints, ResolveDataTypeReference(cd.DataType).ToNullable())
+                DecorateDataTypeWithConstraints(cd.ColumnIdentifier.Value, cd.Constraints, ResolveDataTypeReference(cd.DataType).ToNullable()),
+                cd.ToMaybe()
             );
 
         private SubroutineDataType.Parameter CreateSubroutineParameterFromProcedureParameterFragment(ProcedureParameter parameter) =>

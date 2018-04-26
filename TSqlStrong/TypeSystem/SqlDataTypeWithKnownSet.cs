@@ -37,6 +37,8 @@ namespace TSqlStrong.TypeSystem
         public new static SqlDataTypeWithKnownSet VarChar(params string[] set) => new SqlDataTypeWithKnownSet(true, set, ScriptDom.SqlDataTypeOption.VarChar);
         public static SqlDataTypeWithKnownSet VarCharExclude(params string[] set) => new SqlDataTypeWithKnownSet(false, set, ScriptDom.SqlDataTypeOption.VarChar);
 
+        public new static SqlDataTypeWithKnownSet NVarChar(params string[] set) => new SqlDataTypeWithKnownSet(true, set, ScriptDom.SqlDataTypeOption.NVarChar);
+
         public new static SqlDataTypeWithKnownSet Numeric(params decimal[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Decimal);
         public static SqlDataTypeWithKnownSet NumericExclude(params decimal[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Decimal);
 

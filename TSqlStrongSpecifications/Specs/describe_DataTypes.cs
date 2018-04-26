@@ -84,15 +84,37 @@ namespace TSqlStrongSpecifications
 
         public void describe_IsAssignableTo()
         {
+            context["VarChar"] = () =>
+            {
+                context["without a domain"] = () =>
+                {
+                    GoodTypeAssignment(SqlDataType.VarChar, SqlDataType.VarChar);
+                    GoodTypeAssignment(SqlDataType.VarChar, SqlDataType.NVarChar, "An NVarChar can hold the representation of a VarChar");
+
+                    BadTypeAssignment(SqlDataType.VarChar, SqlDataType.Int);
+                };
+            };
+
+            context["NVarChar"] = () =>
+            {
+                context["without a domain"] = () =>
+                {
+                    GoodTypeAssignment(SqlDataType.NVarChar, SqlDataType.NVarChar);
+
+                    BadTypeAssignment(SqlDataType.NVarChar, SqlDataType.VarChar);
+                    BadTypeAssignment(SqlDataType.NVarChar, SqlDataType.Int);
+                };
+            };
+
             context["Integers"] = () =>
             {
                 context["without a domain"] = () =>
                 {
                     GoodTypeAssignment(SqlDataType.Int, new SqlDataType(ScriptDom.SqlDataTypeOption.Int));
 
-                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithDomain.Int("X"), because: "there is no way to vouch for a domain");
-                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithKnownSet.Int(1, 2, 3));
                     BadTypeAssignment(SqlDataType.Int, SqlDataType.VarChar);
+                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithDomain.Int("X"), because: "there is no way to vouch for a domain");
+                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithKnownSet.Int(1, 2, 3));                    
                     BadTypeAssignment(SqlDataType.Int, new RowDataType());
                 };
 

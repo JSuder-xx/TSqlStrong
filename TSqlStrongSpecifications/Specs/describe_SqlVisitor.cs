@@ -22,10 +22,29 @@ namespace TSqlStrongSpecifications
     {
         #region Descriptions
 
+        public void describe_SelectSetStatement()
+        {
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+declare @myInt int;
+declare @myText varchar(100);
+select @myInt = @myText;
+",
+                4);
+
+            ExpectSqlToBeFine(
+                @"
+declare @myInt int;
+declare @myOtherInt int;
+select @myInt = @myOtherInt;
+");
+
+        }
+
         public void describe_SelectStatement()
         {
             StackFrame FrameWithNullableIntX() => new StackFrame().WithSymbol("@x", SqlDataType.Int.ToNullable());
-                        
+
             context["where clause"] = () =>
             {
                 GivenSql("select * from dbo.Master m where m.name = 'Bob'", () =>
@@ -290,12 +309,17 @@ namespace TSqlStrongSpecifications
                         .Values.Should().BeEquivalentTo(1);                        
                 }));
 
+                GivenSql("select 1 union select 'apples';", () => AndVerifyingWithTopFrame(() =>
+                {
+                    ItShouldHaveErrorMessages(Messages.UnableToJoinTypes("Int{1}", "VarChar{apples}"));
+                }));
+
                 GivenSql("select 1, 'apples' union select 2, 'oranges' union select 3, 'pears';", () => AndVerifyingWithTopFrame(() =>
                 {
                     it["should evaluate to two columns"] = () => ExpectRowDataType().ColumnDataTypes.Count().Should().Be(2);
                     it["and the first should be Int{1, 2, 3}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which.Values.Should().BeEquivalentTo(1, 2, 3);
                 }));
-            };
+           };
 
             context["name qualification"] = () =>
             {
@@ -494,6 +518,66 @@ select top 10 * from Recurse",
                     };
                 })            
             );
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+with Recurse (Value)
+as
+(
+    -- ERROR: Missing the base case for recursion and therefore the Recurse symbol is not available
+    select Value + 1
+    from Recurse 
+)
+select top 10 * from Recurse",
+                7, 6
+            );
+
+            ExpectSqlToBeFine(
+                @"
+with NonRecursive (Value)
+as
+(
+    select 1
+    union all
+    select 2
+)
+select top 10 * from NonRecursive"
+            );
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+with NonRecursive (Value)
+as
+(
+    select 1
+    union all
+    select 'a'
+)
+select top 10 * from NonRecursive",
+                7
+            );
+
+            ExpectSqlToBeFine(
+                @"
+with NonRecursive (Value)
+as
+(
+    select 1 as 'Value' -- OK: Alias matches.
+)
+select top 10 * from NonRecursive"                
+            );
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+with NonRecursive (Value)
+as
+(
+    select 1 as 'CrazyValue' -- NOPE. Alias does not match.
+)
+select top 10 * from NonRecursive",
+                2
+            );
+
         }
 
         public void describe_CreateTable()
@@ -877,8 +961,7 @@ from
 
 
         }
-
-
+        
         public void describe_ProcedureDeclaration()
         {
             ExpectSqlToBeFine(
@@ -1007,6 +1090,165 @@ GO
 ",
                 4, 12
             );
+        }
+
+        public void describe_Cursors()
+        {
+            ExpectSqlToHaveIssuesOnLines(
+                @"OPEN notDefined",
+                1
+            );
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"CLOSE notDefined",
+                1
+            );
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+DECLARE SomeCursor CURSOR FOR   
+    SELECT 1
+    UNION
+    SELECT 2;  
+OPEN notDefined",
+                6                
+            );
+
+            ExpectSqlToBeFine(
+                @"
+DECLARE SomeCursor CURSOR FOR   
+    SELECT 1
+    UNION
+    SELECT 2;  
+OPEN SomeCursor
+CLOSE SomeCursor");
+
+            ExpectSqlToBeFine(
+                @"
+DECLARE SomeCursor CURSOR FOR   
+    SELECT 1
+    UNION
+    SELECT 2;  
+
+OPEN SomeCursor
+
+DECLARE @myInt int;
+
+FETCH NEXT FROM SomeCursor INTO @myInt;
+");
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+DECLARE SomeCursor CURSOR FOR   
+    SELECT 1
+    UNION
+    SELECT 2;  
+
+OPEN SomeCursor
+
+DECLARE @myVarChar varchar(20);
+
+FETCH NEXT FROM SomeCursor INTO @myVarChar; -- ERROR: Incorrect type
+",
+                11);
+
+            // Small but complete
+            ExpectSqlToBeFine(
+    @"
+DECLARE SomeCursor CURSOR FOR   
+    SELECT 1
+    UNION
+    SELECT 2;  
+
+OPEN SomeCursor
+
+DECLARE @myInt int;
+
+FETCH NEXT FROM SomeCursor INTO @myInt;
+
+WHILE @@FETCH_STATUS = 0  
+BEGIN  
+    PRINT @myInt;
+   
+    FETCH NEXT FROM SomeCursor INTO @myInt
+END   
+CLOSE SomeCursor;  
+DEALLOCATE SomeCursor; 
+");
+
+            // Very slightly modified version of example from Microsoft documentation
+            ExpectSqlToBeFine(
+                @"
+CREATE TABLE PURCHASING.VENDOR (
+    VendorID int not null,
+    Name nvarchar(100),
+    PreferredVendorStatus int
+);
+GO
+
+CREATE TABLE PURCHASING.ProductVendor (
+    ProductID int not null,
+    VendorID int not null
+);
+GO
+
+CREATE TABLE Production.Product (
+    ProductID int not null,
+    Name nvarchar(100)
+);
+GO
+
+DECLARE @vendor_id int, @vendor_name nvarchar(50),  
+    @message nvarchar(80), @product nvarchar(50);  
+
+-- Vendor Products Report 
+
+DECLARE vendor_cursor CURSOR FOR   
+SELECT VendorID, Name  
+FROM Purchasing.Vendor  
+WHERE PreferredVendorStatus = 1  
+ORDER BY VendorID;  
+
+OPEN vendor_cursor  
+
+FETCH NEXT FROM vendor_cursor   
+INTO @vendor_id, @vendor_name
+
+WHILE @@FETCH_STATUS = 0  
+BEGIN  
+    PRINT @vendor_name;
+   
+    -- Declare an inner cursor based     
+    -- on vendor_id from the outer cursor.  
+
+    DECLARE product_cursor CURSOR FOR   
+    SELECT v.Name  
+    FROM Purchasing.ProductVendor pv, Production.Product v  
+    WHERE pv.ProductID = v.ProductID AND  
+    pv.VendorID = @vendor_id  -- Variable value from the outer cursor  
+
+    OPEN product_cursor  
+    FETCH NEXT FROM product_cursor INTO @product  
+
+    IF @@FETCH_STATUS <> 0   
+        PRINT '         <<None>>'       
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN      
+        SELECT @message = N'         ' + Coalesce(@product, N'');
+        PRINT @message  
+        FETCH NEXT FROM product_cursor INTO @product  
+    END  
+
+    CLOSE product_cursor  
+    DEALLOCATE product_cursor  
+        -- Get the next vendor.  
+    FETCH NEXT FROM vendor_cursor   
+    INTO @vendor_id, @vendor_name  
+END   
+CLOSE vendor_cursor;  
+DEALLOCATE vendor_cursor; 
+");
         }
 
         #endregion
