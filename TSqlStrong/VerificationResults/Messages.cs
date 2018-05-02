@@ -43,8 +43,8 @@ namespace TSqlStrong.VerificationResults
         public static string CallWithIncorrectNumberOfArguments(string functionName, int actual, int expecting) =>
             $"Expected {expecting} arguments but received {actual} for function '{functionName}'.";
 
-        public static string BinaryMathWithIncompatibleTypes(string leftType, string rightType) =>
-            $"Binary math with incompatible values of type {leftType} and {rightType}.";
+        public static string BinaryOperationWithIncompatibleTypes(string leftType, string rightType) =>
+            $"Binary operation with incompatible values of type {leftType} and {rightType}.";
 
         public static string ParameterIssue(string parameterName, string message) =>
             $"Parameter {parameterName}: {message}";

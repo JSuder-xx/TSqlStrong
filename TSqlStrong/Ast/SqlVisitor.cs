@@ -961,7 +961,7 @@ namespace TSqlStrong.Ast
             rightType = NullableDataType.UnwrapIfNull(rightType);
 
             if (!(leftType is SqlDataType leftAsSqlType) || !(rightType is SqlDataType rightAsSqlType) || (leftAsSqlType.SqlDataTypeOption != rightAsSqlType.SqlDataTypeOption))
-                LogError(node, Messages.BinaryMathWithIncompatibleTypes(leftType.ToString(), rightType.ToString()));
+                LogError(node, Messages.BinaryOperationWithIncompatibleTypes(leftType.ToString(), rightType.ToString()));
             else
             {
                 if (node.BinaryExpressionType == BinaryExpressionType.Divide)

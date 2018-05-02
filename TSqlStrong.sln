@@ -9,7 +9,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSqlStrongSpecifications", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LowSums", "LowSums\LowSums.csproj", "{6B9D73F5-99ED-4FBC-927A-D75BF5BA7791}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSqlStrongCLI", "TSqlStrongCli\TSqlStrongCli.csproj", "{E5341FB1-E12A-43DA-8EDE-5EE7C0B47205}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSqlStrongCli", "TSqlStrongCli\TSqlStrongCli.csproj", "{E5341FB1-E12A-43DA-8EDE-5EE7C0B47205}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSqlStrongDemoWebApp", "TSqlStrongDemoWebApp\TSqlStrongDemoWebApp.csproj", "{B515862F-1AB2-4F8A-B2E8-2C7AD5979D46}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{E5341FB1-E12A-43DA-8EDE-5EE7C0B47205}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5341FB1-E12A-43DA-8EDE-5EE7C0B47205}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5341FB1-E12A-43DA-8EDE-5EE7C0B47205}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B515862F-1AB2-4F8A-B2E8-2C7AD5979D46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B515862F-1AB2-4F8A-B2E8-2C7AD5979D46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B515862F-1AB2-4F8A-B2E8-2C7AD5979D46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B515862F-1AB2-4F8A-B2E8-2C7AD5979D46}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

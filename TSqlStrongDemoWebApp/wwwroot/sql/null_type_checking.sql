@@ -1,3 +1,13 @@
+/** ----------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Nulls have been called the billion dollar mistake. 
+
+By default T-SQL Strong will force developers to guard against nulls by either
+* Performing a conditional check (flow typing)
+* Coalescing
+--------------------------------------------------------------------------------
+-------------------------------------------------------------------------------- */
+
 declare @tableWithNulls table (val int null);
 declare @tableWithoutNulls table (val int not null);
 

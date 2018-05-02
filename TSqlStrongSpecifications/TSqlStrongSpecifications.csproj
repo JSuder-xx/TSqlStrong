@@ -157,12 +157,5 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />
-  <ItemGroup>
-    <Content Include="Examples\binary_math.sql" />
-    <Content Include="Examples\check_constraints.sql" />
-    <Content Include="Examples\foreign_key_column_comparison.sql" />
-    <Content Include="Examples\null_type_checking.sql" />
-    <Content Include="Examples\procedure_calls_verifying_temp_table.sql" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

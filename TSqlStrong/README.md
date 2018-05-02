@@ -1,5 +1,5 @@
 ﻿# Overview
-TSqlStrong is a T-SQL type checker/verifier that will  
+T-SQL Strong is a T-SQL type checker/verifier that will  
 * Verify the correctness of T-Sql code before it executes against a database.
 * Advanced type checking features include 
   * Key Column Comparison - Protects against incorrect joins.
@@ -321,6 +321,6 @@ The project is currently a proof of concept. See ROADMAP for where it is heading
 
 * Fork or download the source from GitHub and build. TSqlStrong was developed in Visual Studio 2017 Community Edition.
 * Sql text can be verified using the command line interface TSqlStrongCli. 
-* Example Sql can be found in \TSqlStrongSpecifications\Examples
+* Example Sql can be found in \TSqlStrongDemoWebApp\wwwroot\sql
 * A build task for Visual Studio Code can be found in \TSqlStrongCli\VSCodeIntegration. 
 

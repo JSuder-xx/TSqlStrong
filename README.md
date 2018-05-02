@@ -1,5 +1,5 @@
-# Overview
-TSqlStrong is a T-SQL type checker/verifier that will  
+﻿# Overview
+T-SQL Strong is a T-SQL type checker/verifier that will  
 * Verify the correctness of T-Sql code before it executes against a database.
 * Advanced type checking features include 
   * Key Column Comparison - Protects against incorrect joins.
@@ -180,15 +180,102 @@ end;
 GO
 ```
 
+### Common Table Expressions
+```sql
+with Recurse (Num)
+as
+(
+    select 0
+
+    union all
+
+    -- ERROR: Num is an Int from the base case
+    select Num + 'apples' 
+    from Recurse 
+)
+select top 10 Num from Recurse;
+
+with Recurse (Num)
+as
+(
+    select 0
+
+    union all
+
+    -- ERROR: NumX is not in the list of Recurse
+    select NumX
+    from Recurse 
+)
+select top 10 Num from Recurse;
+
+-- ERROR: Column count mismatch between CTE and union.
+with Recurse (Num)
+as
+(
+    select 0, 1
+
+    union all
+
+    select Num, 20
+    from Recurse 
+)
+select top 10 Num from Recurse;
+
+-- GOOD!
+with Recurse (Num)
+as
+(
+    select 0
+
+    union all
+
+    select Num + 1
+    from Recurse 
+)
+select top 10 Num from Recurse;
+
+with NonRecursive (Num)
+as
+(
+    select 0
+    union all
+    select 1
+    union all
+    select 2
+)
+select * 
+from 
+    NonRecursive 
+where 
+    -- ERROR: TSqlStrong figured out Num can only be 0, 1, or 2 so this comparison check makes no sense.
+    Num = 4;
+
+-- GOOD
+with NonRecursive (Num)
+as
+(
+    select 0
+    union all
+    select 1
+    union all
+    select 2
+)
+select * 
+from 
+    NonRecursive 
+where 
+    Num = 2;
+```
+
 ### Flow Typing
 #### Null Checking
 ```sql
 create table Person (weight int not null)
 GO
 
-declare @someInt int; -- <-- NULLABLE. All variables are nullable by default.
+declare @someInt int; -- NOTE: All variables are nullable by default.
 
-insert into Person select @someInt; -- TYPE ERROR
+insert into Person select @someInt; -- ERROR: Possible nullable assignment to non-null.
 insert into Person select Coalesce(@someInt, 1); -- OK. 
 insert into Person select IsNull(@someInt, 1); -- OK. 
 
@@ -234,6 +321,6 @@ The project is currently a proof of concept. See ROADMAP for where it is heading
 
 * Fork or download the source from GitHub and build. TSqlStrong was developed in Visual Studio 2017 Community Edition.
 * Sql text can be verified using the command line interface TSqlStrongCli. 
-* Example Sql can be found in \TSqlStrongSpecifications\Examples
+* Example Sql can be found in \TSqlStrongDemoWebApp\wwwroot\sql
 * A build task for Visual Studio Code can be found in \TSqlStrongCli\VSCodeIntegration. 
 

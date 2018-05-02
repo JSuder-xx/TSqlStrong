@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div id="react-app">
+    <div class="container">
+        <h3>Please wait while the site loads...</h3>
+        <div>
+            T-SQL Strong is a T-SQL type checker/verifier that 
+            <ul>
+                <li>Verifies the correctness of T-Sql code before it executes against a database.</li>
+                <li>
+                    <span>Provides advanced type checking features such as</span>
+                    <ul>
+                        <li>Key Column Comparison - Protects against incorrect joins.</li>
+                        <li>Null Type Checking - Guard against run-time errors of assigning a null value to a non-null column.</li>
+                        <li>Check Constraints As Enumerations - Ensure only valid literals are assigned or compared against check constraint columns.</li>
+                        <li>Insert Into Select Alias Matching - Protect against positional mistakes made with insert-select where you have many columns.</li>
+                        <li>Verify the correctness of Temporary Table structure usage between different stored procedures.</li>
+                        <li>Flow Typing. TSqlStrong can learn more about types (refinement) by analyzing flow control (IF/ELSEIF, CASE).</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/dist/main-client.js" asp-append-version="true" defer></script>
+}

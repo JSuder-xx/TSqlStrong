@@ -7,6 +7,9 @@ using ScriptDom = Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace TSqlStrong.VerificationResults
 {
+    /// <summary>
+    /// An in-memory Issue coupled to TSqlFragment references.
+    /// </summary>
     public class Issue
     {
         private readonly ScriptDom.TSqlFragment _fragment;
@@ -27,9 +30,18 @@ namespace TSqlStrong.VerificationResults
         public static class Select 
         {
             public static string Message(Issue issue) => issue.Message;
-            public static Func<Issue, string> ToConsole(string fileName) =>
+
+            public static Func<Issue, IssueDTO> ToDTO(string fileName) =>
                 (issue) =>
-                    $"{fileName}({issue.Fragment.StartLine},{issue.Fragment.StartColumn}-{issue.Fragment.StartColumn + issue.Fragment.FragmentLength}): {issue.Level.ToString().ToLower()}: {issue.Message}";
+                    new IssueDTO()
+                    {
+                        FileName = fileName,
+                        StartLine = issue.Fragment.StartLine,
+                        StartColumn = issue.Fragment.StartColumn,
+                        EndColumn = issue.Fragment.StartColumn + issue.Fragment.FragmentLength,
+                        IssueLevel = issue.Level,
+                        Message = issue.Message
+                    };            
         }        
     }
     

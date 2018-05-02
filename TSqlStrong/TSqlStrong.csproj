@@ -30,6 +30,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom, Version=14.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
@@ -48,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Ast\ExpressionResult.cs" />
+    <Compile Include="Ast\TypeChecker.cs" />
     <Compile Include="Symbols\GlobalVariableNames.cs" />
     <Compile Include="Symbols\Refinement.cs" />
     <Compile Include="Symbols\RefinementSetCases.cs" />
@@ -73,6 +75,7 @@
     <Compile Include="TypeSystem\SubroutineDataType.cs" />
     <Compile Include="TypeSystem\VoidDataType.cs" />
     <Compile Include="VerificationResults\Issue.cs" />
+    <Compile Include="VerificationResults\IssueDTO.cs" />
     <Compile Include="VerificationResults\IssueLevel.cs" />
     <Compile Include="VerificationResults\Messages.cs" />
     <Compile Include="Ast\Names.cs" />

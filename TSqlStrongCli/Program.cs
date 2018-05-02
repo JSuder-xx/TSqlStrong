@@ -28,8 +28,9 @@ namespace TSqlStrongCLI
 
             try
             {
-                var issues = Parse(System.IO.File.ReadAllText(fileName))
-                    .Select(TSqlStrong.VerificationResults.Issue.Select.ToConsole(fileName))
+                var issues = TSqlStrong.Ast.TypeChecker.Parse(System.IO.File.ReadAllText(fileName))
+                    .Select(TSqlStrong.VerificationResults.Issue.Select.ToDTO(fileName))
+                    .Select(TSqlStrong.VerificationResults.IssueDTO.ToConsoleString)
                     .Distinct();
                 var time = DateTime.Now.ToShortTimeString();
                 foreach (var issue in issues)
@@ -40,26 +41,6 @@ namespace TSqlStrongCLI
             catch (Exception ex)
             {
                 Console.WriteLine($"'{fileName}':0:0: error: Parse error ${ex.Message}");
-            }
-        }
-
-        private static IEnumerable<TSqlStrong.VerificationResults.Issue> Parse(string sql)
-        {
-            using (var reader = new System.IO.StringReader(sql))
-            {
-                var scriptFragment = (new ScriptDom.TSql100Parser(true)).Parse(reader, out IList<ScriptDom.ParseError> errors);
-
-                var topFrame = new TSqlStrong.Symbols.StackFrame();
-                var visitor = new TSqlStrong.Ast.SqlVisitor(
-                    topFrame,
-                    new TSqlStrong.Logger.DebuggingLogger()
-                );
-
-                visitor.VisitAndReturnResults(scriptFragment);
-
-                var functionBodyTypeIssues = topFrame.GetIssuesFromCompilingFunctionBodies().ToArray();
-                topFrame.PerformTopLevelTypeCheckOfStoredProcedures();
-                return functionBodyTypeIssues.Concat(visitor.Issues);
             }
         }
 
@@ -77,3 +58,4 @@ namespace TSqlStrongCLI
 
 
 }
+

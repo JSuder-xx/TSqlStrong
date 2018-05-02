@@ -1,3 +1,16 @@
+/** ----------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+This example does not illustrate any exotic new features but it does show
+that T-SQL Strong can validate cursors. 
+
+Try making changes to the code below that will cause type errors. 
+
+Examples include:
+  1. Changing a name of a cursor, column, or table to be wrong.
+  2. Look for TRY IT comments below for other suggestions.
+--------------------------------------------------------------------------------
+-------------------------------------------------------------------------------- */
+
 CREATE TABLE PURCHASING.VENDOR (
     VendorID int not null,
     Name nvarchar(100),
@@ -31,6 +44,8 @@ ORDER BY VendorID;
 OPEN vendor_cursor  
 
 FETCH NEXT FROM vendor_cursor   
+-- TRY IT: The vendor_cursor has two columns. Try adding a third variable to the INTO variable list and 
+-- see what T-SQL Strong has to say about it.
 INTO @vendor_id, @vendor_name
 
 WHILE @@FETCH_STATUS = 0  
