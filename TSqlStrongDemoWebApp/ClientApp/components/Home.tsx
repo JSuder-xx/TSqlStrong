@@ -4,7 +4,7 @@ import { withRouter, RouteComponentProps } from 'react-router-dom';
 export default class Home extends React.Component<RouteComponentProps<any>, {}> {
     public render() {
         return <div>
-            <p>
+            <div>
                 T-SQL Strong is a T-SQL type checker/verifier that
                 <ul>
                     <li>Verifies the correctness of T-Sql code before it executes against a database.</li>
@@ -20,13 +20,17 @@ export default class Home extends React.Component<RouteComponentProps<any>, {}> 
                         </ul>
                     </li>
                 </ul>
-            </p>
+            </div>
             <p>
-                The project is currently a proof of concept. 
+                Keep tabs on the project at <a target="_blank" href="https://github.com/JSuder-xx/TSqlStrong">GitHub</a>.
             </p>
-            <p>
-                Take it for a spin on the Try It Online tab.
-            </p>
+            <div>
+                <span>The project is currently a proof of concept. You can</span>
+                <ul>
+                    <li>Take it for a spin on the Try It Online tab right now.</li>
+                    <li>Integrate into VS Code by building the project from GitHub and using the command line interface with the included VS Code build task.</li>
+                </ul>
+            </div>
         </div>;
     }
 }
