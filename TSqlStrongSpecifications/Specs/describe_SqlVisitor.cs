@@ -62,21 +62,21 @@ select @myInt = @myOtherInt;
                     );
                 });
 
-                GivenSql("select * from dbo.Master m where m.name = 10", () =>                
+                GivenSql("select * from dbo.Master m where m.name = 10", () =>
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMaster,
                         () => ItShouldHaveErrorMessageCount(1)
                     )
                 );
 
-                GivenSql("select * from dbo.Detail d where d.fruit = 'starfruit'", () =>                
+                GivenSql("select * from dbo.Detail d where d.fruit = 'starfruit'", () =>
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMasterAndDetail,
                         () => ItShouldHaveErrorMessageCount(1)
                     )
                 );
 
-                GivenSql("select * from dbo.Detail d where d.fruit = 'apples'", () =>                
+                GivenSql("select * from dbo.Detail d where d.fruit = 'apples'", () =>
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMasterAndDetail,
                         () => ItShouldHaveNoIssues()
@@ -188,7 +188,7 @@ select @myInt = @myOtherInt;
                 GivenSql("select case @x when 2 then 'alpha' when 3 then 'beta' else null end", () =>
                     AndVerifyingWithTopFrame(
                         FrameWithNullableIntX(),
-                        () => 
+                        () =>
                         it["produces a column Nullable<SqlDataTypeWithSet[Varchar]{alpha, beta}>"] = () =>
                         {
                             var nullable = ExpectSingleColumnRow<NullableDataType>();
@@ -276,7 +276,7 @@ select @myInt = @myOtherInt;
 
                 GivenSql("select deriv.x from (select 1 as MyInt, 'Bob' as Name) deriv", () =>
                     AndVerifyingWithNoTopFrame(() =>
-                        ItShouldHaveErrorMessages(Messages.UnableToFindColumnInRow("deriv.x"))                            
+                        ItShouldHaveErrorMessages(Messages.UnableToFindColumnInRow("deriv.x"))
                     )
                 );
 
@@ -293,7 +293,7 @@ select @myInt = @myOtherInt;
                 {
                     it["should evaluate to two columns"] = () => ExpectRowDataType().ColumnDataTypes.Count().Should().Be(2);
                     it["and the first should be Int{1, 2}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which.Values.Should().BeEquivalentTo(1, 2);
-                    it["and the second should be varchar{'apples', 'oranges'}"] = () => 
+                    it["and the second should be varchar{'apples', 'oranges'}"] = () =>
                         ExpectRowDataType().ColumnDataTypes.Second()
                         .DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which
                         .Values.Cast<string>().Should().BeEquivalentTo("apples", "oranges");
@@ -306,7 +306,7 @@ select @myInt = @myOtherInt;
                         ExpectRowDataType().ColumnDataTypes.First().DataType
                         .Should().BeOfType<NullableDataType>().Which
                         .DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which
-                        .Values.Should().BeEquivalentTo(1);                        
+                        .Values.Should().BeEquivalentTo(1);
                 }));
 
                 GivenSql("select 1 union select 'apples';", () => AndVerifyingWithTopFrame(() =>
@@ -319,7 +319,7 @@ select @myInt = @myOtherInt;
                     it["should evaluate to two columns"] = () => ExpectRowDataType().ColumnDataTypes.Count().Should().Be(2);
                     it["and the first should be Int{1, 2, 3}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which.Values.Should().BeEquivalentTo(1, 2, 3);
                 }));
-           };
+            };
 
             context["name qualification"] = () =>
             {
@@ -391,7 +391,7 @@ select @myInt = @myOtherInt;
                             Messages.UnableToFindColumn("d.master_id"),
                             Messages.UnableToFindColumn("m.master_id")
                         )
-                    ); 
+                    );
 
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMasterAndDetail,
@@ -404,21 +404,21 @@ select @myInt = @myOtherInt;
                     );
                 });
 
-                GivenSql("select * from dbo.Master m inner join dbo.Detail d on d.detail_id = m.master_id and 1 = 1", () =>                
+                GivenSql("select * from dbo.Master m inner join dbo.Detail d on d.detail_id = m.master_id and 1 = 1", () =>
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMasterAndDetail,
                         () => ItShouldHaveErrorMessageCount(1)
                     )
                 );
 
-                GivenSql("select * from dbo.Master m inner join dbo.Detail d on d.detail_id = m.master_id", () =>                
+                GivenSql("select * from dbo.Master m inner join dbo.Detail d on d.detail_id = m.master_id", () =>
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMasterAndDetail,
                         expectations: () => ItShouldHaveErrorMessageCount(1)
                     )
                 );
 
-                GivenSql("select * from dbo.Master m inner join dbo.Detail d on m.master_id = d.detail_id", () =>                
+                GivenSql("select * from dbo.Master m inner join dbo.Detail d on m.master_id = d.detail_id", () =>
                     AndVerifyingWithTopFrame(
                         StackFrameDefinitions.withMasterAndDetail,
                         expectations: () => ItShouldHaveErrorMessageCount(1)
@@ -489,6 +489,71 @@ select @myInt = @myOtherInt;
                 });
             };
 
+            context["Insert into Table Select from Table Variable"] = () =>
+            {
+                ExpectSqlToBeFine(
+        @"
+create table Person
+(
+    gender varchar(40) 
+        -- Add a constraint that verifies a value must be one of several by employing
+        -- a series equality checks OR'd together.
+        constraint ck_Person_Gender
+        check (
+            (gender = 'male')
+            or (gender = 'female')
+            or (gender = 'other') 
+            or (gender = 'unknown')
+        )
+);
+
+declare @personLocal table (genderUnchecked varchar(100) not null);
+
+insert into Person (gender)
+select 
+    (case 
+        when pl.genderUnchecked = 'male' then 'male'
+        when pl.genderUnchecked = 'female' then 'female'
+        when pl.genderUnchecked = 'other' then 'other'
+        else 
+            'unknown'
+    end)
+from
+    @PersonLocal pl;
+");
+
+                ExpectSqlToBeFine(
+        @"
+create table Person
+(
+    gender varchar(40) 
+        -- Add a constraint that verifies a value must be one of several by employing
+        -- a series equality checks OR'd together.
+        constraint ck_Person_Gender
+        check (
+            (gender = 'male')
+            or (gender = 'female')
+            or (gender = 'other') 
+            or (gender = 'unknown')
+        )
+);
+
+declare @personLocal table (genderUnchecked varchar(100) not null);
+
+insert into Person (gender)
+select 
+    (case 
+        when genderUnchecked = 'male' then 'male'
+        when genderUnchecked = 'female' then 'female'
+        when genderUnchecked = 'other' then 'other'
+        else 
+            'unknown'
+    end)
+from
+    @personLocal;
+");
+
+            };
         }
 
         public void describe_CommonTableExpressions()

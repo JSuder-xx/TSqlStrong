@@ -152,14 +152,35 @@ namespace TSqlStrong.Symbols
 
             DataType RefineRow(RowDataType originalRow, IEnumerable<Refinement> columnRefinements)
             {
-                var columnNameToRefinement = columnRefinements
-                    .Where(refinement => (refinement.Reference as ColumnReference).ColumnDataType.Name is ColumnDataType.ColumnName.BaseNamedColumn)
-                    .ToDictionary(refinement => ((refinement.Reference as ColumnReference).ColumnDataType.Name as ColumnDataType.ColumnName.BaseNamedColumn).Name);
+                var refinementsGroupedByName = columnRefinements
+                    .Where(refinement =>
+                        refinement.Reference.Match(
+                            topLevelVariable: (_) => false,
+                            column: (_, columnDataType) =>
+                                columnDataType.Name is ColumnDataType.ColumnName.BaseNamedColumn
+                        )
+                    )
+                    .GroupBy(refinement => ((refinement.Reference as ColumnReference).ColumnDataType.Name as ColumnDataType.ColumnName.BaseNamedColumn).Name);
+
+                var columnNameToRefinement = refinementsGroupedByName
+                    .Select(grouping =>
+                    {
+                        return grouping.Aggregate((acc, cur) =>
+                            acc.DataType.SizeOfDomain < cur.DataType.SizeOfDomain
+                                ? acc 
+                                : cur
+                        );
+                    })
+                    .ToDictionary(getNameOfRefinement);
+                
                 return originalRow.MapNamedColumns((columnName, originalDataType) =>
                     (columnNameToRefinement.TryGetValue(columnName, out Refinement columnRefinement))
                     ? Maybe.Some(columnRefinement.DataType) //.Refine(originalDataType))
                     : Maybe.None<DataType>()
                 );
+
+                string getNameOfRefinement(Refinement refinement) =>
+                    ((refinement.Reference as ColumnReference).ColumnDataType.Name as ColumnDataType.ColumnName.BaseNamedColumn).Name;
             }
         }
 

@@ -559,6 +559,26 @@ namespace TSqlStrong.Ast
             _currentFrame.WithSymbol(alias, _lastExpressionResult.TypeOfExpression);
         }
 
+        public override void ExplicitVisit(VariableTableReference node)
+        {
+            var alias = node.Alias == null ? node.Variable.Name : node.Alias.Value;
+            var maybeDataType = _currentFrame.LookupTypeOfSymbolMaybe(node.Variable.Name);
+
+            _lastExpressionResult = _lastExpressionResult.WithNewSymbolReferenceAndTypeOfExpression(
+                SymbolReference.None,
+                maybeDataType.Match(
+                    some: dataType => dataType.ExpressionType,
+                    none: () =>
+                    {
+                        LogIssue(node, IssueLevel.Warning, Messages.UnknownTypeForBinding(typeName: node.Variable.Name, binding: alias));
+                        return new RowDataType(new TypeSystem.ColumnDataType[] { });
+                    }
+                )
+            );
+
+            _currentFrame.WithSymbol(alias, _lastExpressionResult.TypeOfExpression);
+        }
+
         public override void ExplicitVisit(NamedTableReference node)
         {
             var alias = node.Alias == null ? Names.GetAlias(node.SchemaObject) : node.Alias.Value;
