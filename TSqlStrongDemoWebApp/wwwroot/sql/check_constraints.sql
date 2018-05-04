@@ -23,17 +23,20 @@ create table Person
         )
 )
 
-
 /* -----------------------------------------------------------------------------
 Insert Into 
 -------------------------------------------------------------------------------- */
 -- OK
 insert into Person (gender)
-select 'female';
+    select 'female'
+    union
+    select 'male';
 
 -- ERROR
 insert into Person (gender)
-select 'abc';
+    select 'male'
+    union
+    select 'females';
 
 
 /* -----------------------------------------------------------------------------
@@ -48,8 +51,9 @@ values
 
 -- ERROR: Here the checker has identified that 'hello' is not in the valid set!
 insert into Person (gender)
-values ('hello');
-
+values 
+    ('hello'),
+    ('goodbye');
 
 /* -----------------------------------------------------------------------------
 Case Expressions
@@ -72,6 +76,28 @@ values
         when @someInt > 0 then 'apple'
         else 'male'                
     end);
+
+/* -----------------------------------------------------------------------------
+Case Expressions with Select
+-------------------------------------------------------------------------------- */
+declare @PersonLocal table (genderUnchecked varchar(100) not null);
+
+-- ERROR
+insert into Person (gender)
+select genderUnchecked from @PersonLocal;
+
+-- OK
+insert into Person (gender)
+select 
+    (case 
+        when pl.genderUnchecked = 'male' then 'male'
+        when pl.genderUnchecked = 'female' then 'female'
+        when pl.genderUnchecked = 'other' then 'other'
+        else 
+            'unknown'
+    end)
+from
+    @PersonLocal pl;
 
 
 /* -----------------------------------------------------------------------------

@@ -27,7 +27,11 @@ Experiment with the code below to get a better idea.
 create procedure dbo.SelectFirstAndLastNameFromTemp 
 as
 begin
-    select firstName, lastName from #Temp;
+    select 
+		firstName, 
+		lastName 
+	from 
+		#Temp;
 end;
 GO
 
@@ -38,12 +42,15 @@ BEGIN
 END;
 GO
 
+-- TRY IT: Try commenting out this entire stored procedure to see the effect 
+-- it has on dbo.SelectFirstAndLastNameFromTemp.
 create procedure dbo.CreateWithFullNameAndExecuteIndirect
 as
 begin
     create table #Temp (fullName varchar(200));
 
-    exec dbo.CallsSelectFirstAndLastNameFromTemp; -- ERROR: When called from here the temp table does not have the correct structure.
+	-- ERROR: When called from here the temp table does not have the correct structure.
+    exec dbo.CallsSelectFirstAndLastNameFromTemp; 
 end;
 GO
 
@@ -52,6 +59,7 @@ as
 begin
     create table #Temp (firstName varchar(200), lastName varchar(200));
 
-    exec dbo.CallsSelectFirstAndLastNameFromTemp; -- OK: When called from here it is just fine.
+	-- OK: When called from here it is just fine.
+    exec dbo.CallsSelectFirstAndLastNameFromTemp; 
 end;
 GO
