@@ -8,6 +8,7 @@ import { withRouter } from 'react-router';
 import "brace";
 import "brace/mode/sqlserver";
 import "brace/theme/sqlserver";
+import "brace/theme/vibrant_ink";
 import ReactAce from "react-ace";
 import { Actions, State } from '../store/TSqlEditor';
 
@@ -18,6 +19,10 @@ interface TSqlEditorRouterProps {
 interface TSqlEditorProps extends RouteComponentProps<TSqlEditorRouterProps>, State.TSqlEditorState { }
 
 type TSqlEditorDispatchProps = typeof TSqlEditorStore.actionCreators;
+
+function unique<T>(vals: T[]): T[] {
+    return Array.from(new Set(vals).keys());
+}
 
 class TSqlEditor extends React.Component<TSqlEditorProps & TSqlEditorDispatchProps, {}> {
     public render() {
@@ -32,9 +37,13 @@ class TSqlEditor extends React.Component<TSqlEditorProps & TSqlEditorDispatchPro
             <div className="btn-group">
                 <button type="button" className="btn btn-primary" onClick={() => { props.requestTSqlCompile(props.sql); }}>Compile</button>
 
-                <div className="dropdown">
+                <button type="button" className={`btn btn-${props.isLightTheme ? 'light' : 'dark'}`} onClick={() => { props.toggleTheme(); }}>
+                    Theme: {props.isLightTheme ? "Light" : "Dark"}
+                </button>
+
+                <div className="dropdown btn-group">
                     <button className="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Load Example
+                        {!props.exampleSqlFile ? "Load Example" : `Example: ${props.exampleSqlFile}`}
                     </button>
                     <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
                         {props.availableExampleSqlFiles.map((fileName) =>
@@ -46,12 +55,12 @@ class TSqlEditor extends React.Component<TSqlEditorProps & TSqlEditorDispatchPro
 
             <ReactAce                
                 mode="sqlserver"
-                theme="sqlserver"
+                theme={props.isLightTheme ? "sqlserver" : "vibrant_ink"}
                 annotations={getAnnotations()}
                 defaultValue="-- Enter SQL here. Click Compile to check it. Click 'Load Example' to... well... load an example."
                 value={props.sql}
                 onChange={(e) => props.updateSql(e)}
-                width="760px"
+                width="900px"
                 height="600px"
             />
         </div>;
@@ -68,7 +77,7 @@ class TSqlEditor extends React.Component<TSqlEditorProps & TSqlEditorDispatchPro
         function resultDetails(compilationResult: State.TSuccessfulSqlCompilationResult): string {
             return compilationResult.issues.length === 0
                 ? `No issues!`
-                : `Issues identified on lines: ${compilationResult.issues.map(issue => issue.startLine).join(", ")}`
+                : `Issues identified on lines: ${unique(compilationResult.issues.map(issue => issue.startLine)).join(", ")}`
         }
 
         function alertKind(compilationResult: State.TSuccessfulSqlCompilationResult): string {

@@ -13,10 +13,15 @@ namespace TSqlStrongDemoWebApp.Controllers
         [HttpPost("Compile")]
         public TSqlCompilationResult Compile([FromBody] CompileRequest request)            
         {
+            var stopWatch = System.Diagnostics.Stopwatch.StartNew();
+            var issues = TSqlStrong.Ast.TypeChecker.Parse(request.Sql).Select(TSqlStrong.VerificationResults.Issue.Select.ToDTO(String.Empty)).ToArray();
+            stopWatch.Stop();
+
             return new TSqlCompilationResult()
             {
                 CompiledTime = DateTime.Now.ToShortTimeString(),
-                Issues = TSqlStrong.Ast.TypeChecker.Parse(request.Sql).Select(TSqlStrong.VerificationResults.Issue.Select.ToDTO(String.Empty)).ToArray(),
+                CompilationDurationMS = stopWatch.ElapsedMilliseconds,
+                Issues = issues,
                 Sql = request.Sql
             };
         }
@@ -31,6 +36,7 @@ namespace TSqlStrongDemoWebApp.Controllers
     {
         public string CompiledTime { get; set; }
         public string Sql { get; set; }
+        public long CompilationDurationMS { get; set; }
         public TSqlStrong.VerificationResults.IssueDTO[] Issues { get; set; }
     }
 }

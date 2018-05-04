@@ -20,12 +20,18 @@ export module State {
     export interface TSuccessfulSqlCompilationResultJson {
         compiledTime: string;
         sql: string;
+        compilationDurationMS: number;
         issues: TSqlIssue[];
     }
 
     export class TSuccessfulSqlCompilationResult {
         private _nominalTypingMarker: "TSuccessfulSqlCompilationResult" = "TSuccessfulSqlCompilationResult";
-        constructor(public readonly compiledTime: string, public readonly sql: string, public readonly issues: TSqlIssue[]) { }
+        constructor(
+            public readonly compiledTime: string,
+            public readonly sql: string,
+            public readonly issues: TSqlIssue[],
+            public readonly compilationDurationMS: number
+        ) { }
     }
 
     export class TSqlCompilationFailure { }
@@ -44,6 +50,8 @@ export module State {
         serviceInteraction: ServiceInteraction;
         sql: string;
         lastCompilationResult: TSqlCompilationResult;
+        isLightTheme: boolean;
+        exampleSqlFile: string;
         availableExampleSqlFiles: string[];
         exampleSqlFileContents: { [sqlFileName: string]: string };
     }
@@ -52,10 +60,13 @@ export module State {
         serviceInteraction: "",
         sql: "",
         lastCompilationResult: new TSqlNeverCompiled(),
+        isLightTheme: true,
+        exampleSqlFile: "",
         availableExampleSqlFiles: [
             "foreign_key_column_comparison",
             "check_constraints",
             "null_type_checking",
+            "insert_safety_with_alias",
             "procedure_calls_verifying_temp_table",
             "common_table_expressions",
             "cursors",
@@ -78,6 +89,10 @@ export module Actions {
         sql: string;
     }
 
+    export interface ToggleTheme {
+        type: 'TOGGLE_THEME';
+    }
+
     export interface ReceiveTSqlCompilationResultsAction {
         type: 'RECEIVE_TSQL_COMPILATION_RESULTS';
         compilationResult: State.TSuccessfulSqlCompilationResult;
@@ -85,6 +100,12 @@ export module Actions {
 
     export interface ReceiveExampleSql {
         type: 'RECEIVE_EXAMPLE_SQL';
+        file: string;
+        sql: string;
+    }
+
+    export interface UpdateExampleSql {
+        type: 'UPDATE_EXAMPLE_SQL';
         file: string;
         sql: string;
     }
@@ -99,7 +120,10 @@ export module Actions {
 
     // Declare a 'discriminated union' type. This guarantees that all references to 'type' properties contain one of the
     // declared type strings (and not any other arbitrary string).
-    export type KnownAction = UpdateSqlAction | RequestTSqlCompileAction | ReceiveTSqlCompilationResultsAction | ReceiveExampleSql | RequestExample | CompilationFailure;
+    export type KnownAction = UpdateSqlAction
+        | RequestTSqlCompileAction | ReceiveTSqlCompilationResultsAction | CompilationFailure
+        | ReceiveExampleSql | RequestExample | UpdateExampleSql
+        | ToggleTheme;
 
 }
 
@@ -107,11 +131,14 @@ export const actionCreators = {
     updateSql: (sql: string): AppThunkAction<Actions.KnownAction> => (dispatch, getState) => {
         dispatch({ type: 'UPDATE_SQL', sql })
     },
+    toggleTheme: (): AppThunkAction<Actions.KnownAction> => (dispatch, getState) => {
+        dispatch({ type: 'TOGGLE_THEME' })
+    },
     selectSqlFile: (file: string): AppThunkAction<Actions.KnownAction> => (dispatch, getState) => {
         const { tsqlEditor } = getState();
         const sql = tsqlEditor.exampleSqlFileContents[file];
         if (!!sql)
-            dispatch({ type: 'UPDATE_SQL', sql });
+            dispatch({ type: 'UPDATE_EXAMPLE_SQL', file, sql });
         else {
             addTask(fetch(`sql/${file}.sql`)
                 .then((response: Response) => response.text())
@@ -142,7 +169,12 @@ export const actionCreators = {
             .then(json => {
                 dispatch({
                     type: 'RECEIVE_TSQL_COMPILATION_RESULTS',
-                    compilationResult: new State.TSuccessfulSqlCompilationResult(json.compiledTime, json.sql, json.issues)
+                    compilationResult: new State.TSuccessfulSqlCompilationResult(
+                        json.compiledTime,
+                        json.sql,
+                        json.issues,
+                        json.compilationDurationMS
+                    )
                 });
             })
             .catch(() => {
@@ -170,6 +202,13 @@ export const reducer: Reducer<State.TSqlEditorState> = (state: State.TSqlEditorS
                 ...state,
                 sql: action.sql
             };
+        case 'UPDATE_EXAMPLE_SQL':
+            return {
+                ...state,
+                sql: action.sql,
+                exampleSqlFile: action.file,
+                lastCompilationResult: new State.TSqlNeverCompiled()
+            };
         case 'REQUEST_COMPILE':
             return {
                 ...state,
@@ -183,7 +222,9 @@ export const reducer: Reducer<State.TSqlEditorState> = (state: State.TSqlEditorS
                     ...state.exampleSqlFileContents,
                     ...singleKeyValueObject({ key: action.file, value: action.sql })
                 },
-                sql: action.sql
+                exampleSqlFile: action.file,
+                sql: action.sql,
+                lastCompilationResult: new State.TSqlNeverCompiled()
             };
         case 'REQUEST_EXAMPLE':
             return {
@@ -197,6 +238,17 @@ export const reducer: Reducer<State.TSqlEditorState> = (state: State.TSqlEditorS
                 sql: state.sql,
                 lastCompilationResult: action.compilationResult
             };
+        case 'TOGGLE_THEME':
+            return {
+                ...state,
+                isLightTheme: !state.isLightTheme
+            };
+        case 'COMPILATION_FAILURE':
+            return {
+                ...state,
+                serviceInteraction: "",
+                lastCompilationResult: new State.TSqlCompilationFailure()
+            }
         default:
             return state;
     }

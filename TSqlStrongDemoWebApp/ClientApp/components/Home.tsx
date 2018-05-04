@@ -31,6 +31,15 @@ export default class Home extends React.Component<RouteComponentProps<any>, {}> 
                     <li>Integrate into VS Code by building the project from GitHub and using the command line interface with the included VS Code build task.</li>
                 </ul>
             </div>
+            <div>
+                The next step for the project is to build a schema importer that will load information about an existing database. 
+                
+                When complete T-SQL strong can be used to validate production code
+                <ul>
+                    <li>On developer machines from VS Code and, eventually, SQL Server Management Studio and Visual Studio.</li>
+                    <li>Integrated as part of Continuous Integration tooling</li>
+                </ul>
+            </div>
         </div>;
     }
 }
