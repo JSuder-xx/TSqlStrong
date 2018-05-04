@@ -9,6 +9,8 @@ T-SQL Strong is a T-SQL type checker/verifier that will
   * Verify the correctness of Temporary Table structure usage between different stored procedures.
 * Flow Typing. TSqlStrong can learn more about types (refinement) by analyzing flow control (IF/ELSEIF, CASE).
 
+[Try it out online](http://tsqlstrongdemo.azurewebsites.net)
+
 # Examples
 ### Key Column Comparison  
 ```sql
