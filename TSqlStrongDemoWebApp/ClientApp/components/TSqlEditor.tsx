@@ -57,7 +57,6 @@ class TSqlEditor extends React.Component<TSqlEditorProps & TSqlEditorDispatchPro
                 mode="sqlserver"
                 theme={props.isLightTheme ? "sqlserver" : "vibrant_ink"}
                 annotations={getAnnotations()}
-                defaultValue="-- Enter SQL here. Click Compile to check it. Click 'Load Example' to... well... load an example."
                 value={props.sql}
                 onChange={(e) => props.updateSql(e)}
                 width="900px"
@@ -70,22 +69,42 @@ class TSqlEditor extends React.Component<TSqlEditorProps & TSqlEditorDispatchPro
             return result instanceof State.TSqlCompilationFailure
                 ? <div className="alert alert-danger" role="alert">Error Talking to Server. Try again in a moment.</div>
                 : result instanceof State.TSuccessfulSqlCompilationResult
-                    ? <div className={`alert alert-${alertKind(result)}`} role="alert">Last compiled {result.compiledTime}. {resultDetails(result)}</div>
+                    ? displayOfSuccessful(result) 
                     : <div className="alert alert-info" role="alert">Never Compiled</div>;
-        }
 
-        function resultDetails(compilationResult: State.TSuccessfulSqlCompilationResult): string {
-            return compilationResult.issues.length === 0
-                ? `No issues!`
-                : `Issues identified on lines: ${unique(compilationResult.issues.map(issue => issue.startLine)).join(", ")}`
-        }
+            function displayOfSuccessful(result: State.TSuccessfulSqlCompilationResult) {
+                return <div className={`alert alert-${alertKind(result)}`} role="alert">
+                    {
+                        result.issues.length === 0
+                            ? [<span>Last compiled {result.compiledTime}. No issues!</span>]
+                            : [
+                                <a data-toggle="collapse" href="#compilation-details">Last compiled {result.compiledTime}. Issues identified on lines: {unique(result.issues.map(issue => issue.startLine)).join(", ")}</a>,
+                                <div className="collapse" id="compilation-details">
+                                    <div className="card card-body">
+                                        <ul>
+                                        {
+                                            result.issues.map(issue =>
+                                                <li key={issue.startLine + issue.message.length}>Line {issue.startLine}: {issue.message}</li>
+                                            )
+                                        }
+                                        </ul>
+                                        <em>
+                                            Detailed error messages can also be displayed for each line by hovering over the error icon in the channel on the left.
+                                        </em>
+                                    </div>
+                                </div>
+                            ]
+                    }
+                </div>;
+            }
 
-        function alertKind(compilationResult: State.TSuccessfulSqlCompilationResult): string {
-            return compilationResult.issues.some(it => it.issueLevel === State.IssueLevel.Error)
-                ? "danger"
-                : compilationResult.issues.some(it => it.issueLevel === State.IssueLevel.Warning)
-                    ? "warning"
-                    : "success";
+            function alertKind(compilationResult: State.TSuccessfulSqlCompilationResult): string {
+                return compilationResult.issues.some(it => it.issueLevel === State.IssueLevel.Error)
+                    ? "danger"
+                    : compilationResult.issues.some(it => it.issueLevel === State.IssueLevel.Warning)
+                        ? "warning"
+                        : "success";
+            }
         }
         
         function getAnnotations() {

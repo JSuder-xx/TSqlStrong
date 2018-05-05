@@ -58,7 +58,13 @@ export module State {
 
     export const originalState: TSqlEditorState = {
         serviceInteraction: "",
-        sql: "",
+        sql: 
+`-- Enter SQL here.
+-- Click 'Load Example' to load and immediately compile an example.
+-- Click Compile to verify any code modifications made.
+-- Errors will be indicated in the code editor with a red X to the left. 
+--    Hover the mouse over the X to read the error details for that line of code.
+`,
         lastCompilationResult: new TSqlNeverCompiled(),
         isLightTheme: true,
         exampleSqlFile: "",
