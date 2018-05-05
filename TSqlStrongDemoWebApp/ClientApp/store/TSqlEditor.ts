@@ -137,15 +137,19 @@ export const actionCreators = {
     selectSqlFile: (file: string): AppThunkAction<Actions.KnownAction> => (dispatch, getState) => {
         const { tsqlEditor } = getState();
         const sql = tsqlEditor.exampleSqlFileContents[file];
-        if (!!sql)
+        if (!!sql) { 
             dispatch({ type: 'UPDATE_EXAMPLE_SQL', file, sql });
+            actionCreators.requestTSqlCompile(sql)(dispatch, getState);
+        }
         else {
             addTask(fetch(`sql/${file}.sql`)
                 .then((response: Response) => response.text())
                 .then(data => {
                     dispatch({ type: 'RECEIVE_EXAMPLE_SQL', file, sql: data });
+                    actionCreators.requestTSqlCompile(data)(dispatch, getState);
                 })
             );
+
             dispatch({ type: 'REQUEST_EXAMPLE' });
         }
     },
