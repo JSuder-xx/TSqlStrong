@@ -21,6 +21,8 @@ namespace TSqlStrong.VerificationResults
 
         public static string UnknownGlobalVariable(string variableName) => $"Unknown global variable {variableName}.";
 
+        public static string ComparingToItself = "Comparing a thing with itself. This is likely not your intent.";
+
         public static string UnknownCursor(string name) => $"Unknown cursor {name}";
 
         public static string TooManyVariablesSpecifiedForFetch(int columnsInCursor, int variableCount) =>

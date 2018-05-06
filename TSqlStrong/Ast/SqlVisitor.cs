@@ -974,6 +974,9 @@ namespace TSqlStrong.Ast
                     .Concat(RefineSymbolForInEquality(rightResult, leftResult.TypeOfExpression))
                 );
 
+                if ((leftResult.SymbolReference != SymbolReference.None) && leftResult.SymbolReference.Equals(rightResult.SymbolReference))
+                    LogIssue(node, IssueLevel.Warning, Messages.ComparingToItself);
+
                 var isEqual = node.ComparisonType == BooleanComparisonType.Equals;
                 _lastExpressionResult = new ExpressionResult(
                     SymbolReference.None,

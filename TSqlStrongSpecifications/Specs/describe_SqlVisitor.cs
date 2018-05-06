@@ -473,6 +473,20 @@ from
                     )
                 );
 
+                GivenSql("select * from dbo.Master m1 inner join dbo.Master m2 on m1.master_id = m1.master_id", () =>
+                    AndVerifyingWithTopFrame(
+                        StackFrameDefinitions.withMasterAndDetail,
+                        expectations: () => ItShouldHaveIssuesOnLines(1)
+                    )
+                );
+
+                GivenSql("select * from dbo.Master m1 inner join dbo.Master m2 on m1.master_id = m2.master_id", () =>
+                    AndVerifyingWithTopFrame(
+                        StackFrameDefinitions.withMasterAndDetail,
+                        expectations: () => ItShouldHaveNoIssues()
+                    )
+                );
+
                 GivenSql("select * from dbo.Master m inner join (select * from dbo.Detail) derived on derived.master_id = m.master_id", () =>
                 {
                     AndVerifyingWithNoTopFrame(() =>
@@ -1160,8 +1174,6 @@ from
     PersonsWithLastName(1);",
                 18
                 );
-
-
         }
         
         public void describe_ProcedureDeclaration()

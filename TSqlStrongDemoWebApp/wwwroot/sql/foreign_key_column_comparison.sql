@@ -41,20 +41,36 @@ from
     Child  c1
     inner join Child c2 on c1.sibling_id = c2.id;
 
--- Type Error
+-- Error: The Child primary key belongs to a different domain than the parent primary key
 select * 
 from
     Parent 
-    inner join Child on Child.ID = Parent_ID;
+    inner join Child on Child.ID = Parent.ID;
 
--- Type Error
+-- Error: The child primary key belong to a different domain than the foreign key reference to parent.
 select * 
 from
     Child c1
     inner join Child c2 on c1.ID = c2.Parent_ID;
 
--- Type Error
+-- Error: Sibling_ID belongs to the domain of Child id's so cannot be compared against parent id's.
 select * 
 from
     Parent
     inner join Child on Child.Sibling_ID = Parent.ID;
+
+-- OK
+select * 
+from
+    Child c1
+    inner join Child c2 on c1.parent_id = c2.parent_id
+where
+	c1.id <> c2.id;
+
+-- ERROR: Whoops. Typo where c1's parent is joined to c1's parent. 
+select * 
+from
+    Child c1
+    inner join Child c2 on c1.parent_id = c1.parent_id
+where
+	c1.id <> c2.id;
