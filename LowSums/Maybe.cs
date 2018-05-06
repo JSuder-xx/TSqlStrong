@@ -20,11 +20,12 @@ namespace LowSums
             where THopedFor : class, T
             =>
             value is THopedFor asHopedFor ? Maybe.Some(asHopedFor) : Maybe.None<THopedFor>();
-        
+
         public static T GetValueOrException<T>(this IMaybe<T> value) where T : class =>
-            (value is Some<T> val)
-                ? val.Value
-                : (new ArgumentNullException("Expecting value but got None.")).AsValue<T>();
+            value.Match<T>(
+                some: (val) => val,
+                none: () => (new ArgumentNullException("Expecting value but got None.")).AsValue<T>()
+            );
 
         public static ITry<T> ToTry<T>(this IMaybe<T> maybe, string errorMessage) =>
             maybe.Match(
@@ -33,21 +34,31 @@ namespace LowSums
             );
 
         public static T Coalesce<T>(this IMaybe<T> value, T whenNull) =>
-            value is Some<T> val
-                ? val.Value
-                : whenNull;
+            value.Match(
+                some: (val) => val,
+                none: () => whenNull
+            );
 
         public static T Coalesce<T>(this IMaybe<T> value, Func<T> whenNull) =>
-            value is Some<T> val
-                ? val.Value
-                : whenNull();
+            value.Match(
+                some: (val) => val,
+                none: whenNull
+            );
 
         public static void Do<T>(this IMaybe<T> maybe, Action<T> some, Action none)
         {
-            if (maybe is Some<T> someValue)
-                some(someValue.Value);
-            else
-                none();
+            maybe.Match(
+                some: (value) =>
+                {
+                    some(value);
+                    return 1;
+                },
+                none: () =>
+                {
+                    none();
+                    return 1;
+                }
+            );
         }
 
         public static IMaybe<TNew> Select<TOriginal, TNew>(this IMaybe<TOriginal> original, Func<TOriginal, TNew> fn) =>
