@@ -866,6 +866,32 @@ create table Something (id int not null);"
                         () => ItShouldHaveErrorMessages("Unable to assign to other row because Cannot assign column idx to Column('id')")
                     )
                 );
+
+            context["coalesce"] = () =>
+            {
+                ExpectSqlToBeFine(
+                    @"
+declare @tableWithNulls table(val int null);
+declare @tableWithoutNulls table(val int not null);
+
+insert into @tableWithoutNulls
+select coalesce(val, 0) from @tableWithNulls;
+");
+
+            };
+
+            context["refining where"] = () =>
+            {
+                ExpectSqlToBeFine(
+                    @"
+declare @tableWithNulls table(val int null);
+declare @tableWithoutNulls table(val int not null);
+
+insert into @tableWithoutNulls
+select val from @tableWithNulls where val is not null;
+");
+
+            };
         }
 
         public void describe_IfStatementReturningValue()
@@ -972,6 +998,7 @@ create table Something (id int not null);"
             };
 
         }
+
         public void describe_BinaryExpression()
         {
             ExpectSqlToBeFine("select 1 + 2");

@@ -430,19 +430,17 @@ namespace TSqlStrong.Ast
                     node.FromClause.Accept(this);
                     _diagnosticLogger.Exit();
                 }
-
+                
                 if (node.WhereClause != null)
                 {
                     _diagnosticLogger.Enter("WhereClause");
-                    var (_, whereResult) = VisitAndReturnResults(node.WhereClause);
-                    //_currentFrame = _currentFrame.NewFrameFromRefinements(whereResult.RefinementCases.Positive.Refinements);
+                    var (_, whereResult) = VisitAndReturnResults(node.WhereClause);                    
                     _diagnosticLogger.Exit("WhereClause");
+
+                    _currentFrame.RefineInPlace(whereResult.RefinementCases.Positive.Refinements);
                 }
 
-                _diagnosticLogger.Enter("SelectElements[]");
-
-
-                var rowResult = new RowDataType(
+                RowDataType rowResult = rowResult = new RowDataType(
                         node.SelectElements
                         .SelectMany(selectElement => SelectElementToColumnTypes(selectElement))
                         .ToArray()
@@ -453,7 +451,6 @@ namespace TSqlStrong.Ast
                     ? new ExpressionResult(VoidDataType.Instance)
                     // otherwise an expression
                     : new ExpressionResult(rowResult);
-                _diagnosticLogger.Exit();
 
                 _diagnosticLogger.Exit();
             }
@@ -1236,7 +1233,9 @@ namespace TSqlStrong.Ast
 
             _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(
                 anyNotNull
-                    ? NullableDataType.UnwrapIfNull(disjunction)
+                    ? disjunction is ColumnDataType asColumnDataType
+                        ? asColumnDataType.WithNewDataType(NullableDataType.UnwrapIfNull(asColumnDataType.DataType))
+                        : NullableDataType.UnwrapIfNull(disjunction)
                     : disjunction
             );
         }

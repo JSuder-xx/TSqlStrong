@@ -109,9 +109,8 @@ namespace TSqlStrong.Symbols
                 ? LookupUnQualifiedColumnDataType(identifiers.First())
                 : LookupQualifiedColumnDataType(identifiers.Take(identifiers.Length - 1).Delimit("."), identifiers.Last());
 
-        public StackFrame NewFrameFromRefinements(IEnumerable<Refinement> refinements)
+        public void RefineInPlace(IEnumerable<Refinement> refinements)
         {
-            var newFrame = new StackFrame(this);
             refinements
                 .GroupBy(refinement =>
                     refinement.Reference is TopLevelVariableReference variable ? variable.Variable
@@ -126,7 +125,7 @@ namespace TSqlStrong.Symbols
                         .Match(
                             some: (symbolTyping) =>
                             {
-                                newFrame.WithSymbol(
+                                ReplaceSymbol(
                                     symbolTableName,
                                     symbolTyping.ExpressionType is RowDataType rowDataType
                                         ? RefineRow(rowDataType, refinementsGroupedBySymbolEntry)
@@ -141,8 +140,6 @@ namespace TSqlStrong.Symbols
                             }
                         );
                 });
-
-            return newFrame;
 
             DataType RefineVariable(DataType originalDataType, IEnumerable<Refinement> variableRefinements) =>
                 variableRefinements.Aggregate(
@@ -167,12 +164,12 @@ namespace TSqlStrong.Symbols
                     {
                         return grouping.Aggregate((acc, cur) =>
                             acc.DataType.SizeOfDomain < cur.DataType.SizeOfDomain
-                                ? acc 
+                                ? acc
                                 : cur
                         );
                     })
                     .ToDictionary(getNameOfRefinement);
-                
+
                 return originalRow.MapNamedColumns((columnName, originalDataType) =>
                     (columnNameToRefinement.TryGetValue(columnName, out Refinement columnRefinement))
                     ? Maybe.Some(columnRefinement.DataType) //.Refine(originalDataType))
@@ -182,6 +179,13 @@ namespace TSqlStrong.Symbols
                 string getNameOfRefinement(Refinement refinement) =>
                     ((refinement.Reference as ColumnReference).ColumnDataType.Name as ColumnDataType.ColumnName.BaseNamedColumn).Name;
             }
+        }
+
+        public StackFrame NewFrameFromRefinements(IEnumerable<Refinement> refinements)
+        {
+            var newFrame = new StackFrame(this);
+            newFrame.RefineInPlace(refinements);
+            return newFrame;
         }
 
         public void PerformTopLevelTypeCheckOfStoredProcedures()

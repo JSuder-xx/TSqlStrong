@@ -111,6 +111,17 @@ from
     @PersonLocal pl;
 
 
+-- OK: We can also use the WHERE clause to vouch for genderUnchecked. Once genderUnchecked has been checked in the WHERE
+-- clause it has a _refined_ type in the SELECT clause.
+insert into Person (gender)
+select 
+    pl.genderUnchecked
+from
+    @PersonLocal pl
+where
+	pl.genderUnchecked in ('male', 'female', 'other');
+
+
 /* -----------------------------------------------------------------------------
 Refinement By If Expression
 -------------------------------------------------------------------------------- */

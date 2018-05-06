@@ -44,7 +44,7 @@ export module State {
         return (result instanceof TSuccessfulSqlCompilationResult);
     }
 
-    export type ServiceInteraction = '' | 'Compiling' | 'Load Example SQL';
+    export type ServiceInteraction = '' | 'Compiling on Service' | 'Load Example SQL';
 
     export interface TSqlEditorState {
         serviceInteraction: ServiceInteraction;
@@ -222,7 +222,7 @@ export const reducer: Reducer<State.TSqlEditorState> = (state: State.TSqlEditorS
         case 'REQUEST_COMPILE':
             return {
                 ...state,
-                serviceInteraction: "Compiling"
+                serviceInteraction: "Compiling on Service"
             };
         case 'RECEIVE_EXAMPLE_SQL':
             return {
