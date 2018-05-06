@@ -90,6 +90,11 @@ namespace TSqlStrong.TypeSystem
 
         public IEnumerable<Object> Values => _set.ToArray();
 
+        public SqlDataTypeWithKnownSet NegateNumericValues() =>
+            SqlDataTypeOption.IsNumeric()
+                ? new SqlDataTypeWithKnownSet(Include, _set.ToArray().Select(NegateValue), SqlDataTypeOption)
+                : (new InvalidOperationException($"Cannot negate numeric values of {SqlDataTypeOption.ToString()}")).AsValue<SqlDataTypeWithKnownSet>();
+
         public bool Include => _include;
 
         public SqlDataTypeWithKnownSet Invert() => new SqlDataTypeWithKnownSet(!Include, _set, SqlDataTypeOption);
@@ -107,6 +112,19 @@ namespace TSqlStrong.TypeSystem
                 : base.Equals(other);        
 
         public override int GetHashCode() => Values.GenerateListHashCode();
+
+        #endregion
+
+        #region private
+
+        private static Object NegateValue(Object obj) =>
+            (obj is int asInt) ? (-1 * asInt)
+            : (obj is float asFloat) ? (-1 * asFloat)
+            : (obj is decimal asDecimal) ? (-1 * asDecimal)
+            : (obj is double asDouble) ? (-1 * asDouble)
+            : (obj is Single asSingle) ? (-1 * asSingle)
+            : (new InvalidOperationException($"")).AsValue<Object>();
+        
 
         #endregion
 

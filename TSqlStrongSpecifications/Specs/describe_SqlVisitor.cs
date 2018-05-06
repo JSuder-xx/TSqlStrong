@@ -169,6 +169,43 @@ select @myInt = @myOtherInt;
                         () => ItShouldHaveErrorMessages(Messages.DivideByZero)
                     )
                 );
+
+                GivenSql("select case when @x in (1, 2, 3) then @x else 100 end", () =>
+                    AndVerifyingWithTopFrame(
+                        FrameWithNullableIntX(),
+                        () =>
+                        {
+                            it["produces a column SqlDataTypeWithKnownSet{1, 2, 3, 100}"] = () =>
+                            {
+                                var knownSet = ExpectSingleColumnRow<SqlDataTypeWithKnownSet>();
+                                knownSet.SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.Int);
+                                knownSet.Values.Cast<int>().OrderBy(it => it).Should().BeEquivalentTo(1, 2, 3, 100);
+                            };
+                        }
+                    )
+                );
+
+                GivenSql(@"
+declare @personLocal table(genderUnchecked varchar(100) not null);
+select
+    (case 
+        when genderUnchecked in ('male', 'female', 'other') then genderUnchecked
+        else 
+            'unknown'
+    end)
+from
+    @personLocal;", () =>
+                         AndVerifyingWithTopFrame(() =>
+                         {
+                             it["produces a column SqlDataTypeWithKnownSet{male, female, other, unknown}"] = () =>
+                             {
+                                 var knownSet = ExpectSingleColumnRow<SqlDataTypeWithKnownSet>();
+                                 knownSet.SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.VarChar);
+                                 knownSet.Values.Cast<string>().OrderBy(it => it).Should().BeEquivalentTo("female", "male", "other", "unknown");
+                             };
+                         })                
+                );
+
             };
 
             context["simple case"] = () =>
@@ -244,6 +281,17 @@ select @myInt = @myOtherInt;
                         }
                     )
                 );
+
+                GivenSql("select -1", () =>
+                    AndVerifyingWithNoTopFrame(() =>
+                        it["returns columns with type SqlDataTypeWithSet[Int], SqlDataTypeWithSet[VarChar]"] = () =>
+                        {
+                            var column = ExpectSingleColumnRow<SqlDataTypeWithKnownSet>();
+                            column.Values.Cast<int>().Should().BeEquivalentTo(-1);
+                        }
+                    )
+                );
+
 
                 GivenSql("select 1 as MyInt, 'Bob' as Name", () =>
                     AndVerifyingWithNoTopFrame(() =>
@@ -491,8 +539,7 @@ select @myInt = @myOtherInt;
 
             context["Insert into Table Select from Table Variable"] = () =>
             {
-                ExpectSqlToBeFine(
-        @"
+                const string CreatePersonTable = @"
 create table Person
 (
     gender varchar(40) 
@@ -506,7 +553,11 @@ create table Person
             or (gender = 'unknown')
         )
 );
+";
 
+                ExpectSqlToBeFine(
+                    CreatePersonTable +
+                    @"
 declare @personLocal table (genderUnchecked varchar(100) not null);
 
 insert into Person (gender)
@@ -523,21 +574,8 @@ from
 ");
 
                 ExpectSqlToBeFine(
-        @"
-create table Person
-(
-    gender varchar(40) 
-        -- Add a constraint that verifies a value must be one of several by employing
-        -- a series equality checks OR'd together.
-        constraint ck_Person_Gender
-        check (
-            (gender = 'male')
-            or (gender = 'female')
-            or (gender = 'other') 
-            or (gender = 'unknown')
-        )
-);
-
+                    CreatePersonTable +
+                    @"
 declare @personLocal table (genderUnchecked varchar(100) not null);
 
 insert into Person (gender)
@@ -552,6 +590,39 @@ select
 from
     @personLocal;
 ");
+
+                ExpectSqlToBeFine(
+                    CreatePersonTable +
+                    @"
+declare @personLocal table (genderUnchecked varchar(100) not null);
+
+insert into Person (gender)
+select 
+    (case 
+        when genderUnchecked in ('male', 'female', 'other') then genderUnchecked
+        else 
+            'unknown'
+    end)
+from
+    @personLocal;
+");
+
+                ExpectSqlToHaveIssuesOnLines(
+                    CreatePersonTable +
+                    @"
+declare @personLocal table (genderUnchecked varchar(100) not null);
+
+insert into Person (gender)
+select 
+    (case 
+        when genderUnchecked in ('male', 'female_nope', 'other') then genderUnchecked
+        else 
+            'unknown'
+    end)
+from
+    @personLocal;
+",
+                    18);
 
             };
         }
@@ -640,7 +711,7 @@ as
     select 1 as 'CrazyValue' -- NOPE. Alias does not match.
 )
 select top 10 * from NonRecursive",
-                2
+                5
             );
 
         }
@@ -819,49 +890,88 @@ create table Something (id int not null);"
 
         public void describe_IfStatement_And_SetVariableStatement()
         {
-            GivenSql("if (@x = 1) begin set @y = @x end else begin set @z = @x end;", () =>
+            context["Equality Comparison"] = () =>
             {
-                AndVerifyingWithTopFrame(
-                    new StackFrame()
-                        .WithSymbol("@x", SqlDataType.Int)
-                        .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1))
-                        .WithSymbol("@z", SqlDataType.Int),
-                    () => ItShouldHaveNoIssues()                  
-                );
-            });
+                GivenSql("if (@x = 1) begin set @y = @x end else begin set @z = @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1))
+                            .WithSymbol("@z", SqlDataType.Int),
+                        () => ItShouldHaveNoIssues()
+                    );
+                });
 
-            GivenSql("if (@x = 2) begin set @y = @x end else begin set @z = @x end;", () =>
-            {
-                AndVerifyingWithTopFrame(
-                    new StackFrame()
-                        .WithSymbol("@x", SqlDataType.Int)
-                        .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1))
-                        .WithSymbol("@z", SqlDataType.Int),
-                    () => ItShouldHaveErrorMessages(Messages.CannotAssignTo(SqlDataTypeWithKnownSet.Int(2).ToString(), SqlDataTypeWithKnownSet.Int(1).ToString()))
-                );
-            });
+                GivenSql("if (@x = 2) begin set @y = @x end else begin set @z = @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1))
+                            .WithSymbol("@z", SqlDataType.Int),
+                        () => ItShouldHaveErrorMessages(Messages.CannotAssignTo(SqlDataTypeWithKnownSet.Int(2).ToString(), SqlDataTypeWithKnownSet.Int(1).ToString()))
+                    );
+                });
 
-            GivenSql("if (@x = 0) begin set @z = 20 end else begin set @z = 10 / @x end;", () =>
-            {
-                AndVerifyingWithTopFrame(
-                    new StackFrame()
-                        .WithSymbol("@x", SqlDataType.Int)
-                        .WithSymbol("@z", SqlDataType.Int),
-                    () => ItShouldHaveNoIssues()
-                );
-            });
+                GivenSql("if (@x = 0) begin set @z = 20 end else begin set @z = 10 / @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@z", SqlDataType.Int),
+                        () => ItShouldHaveNoIssues()
+                    );
+                });
 
-            GivenSql("if (@x = 1) begin set @z = 20 end else begin set @z = 10 / @x end;", () =>
+                GivenSql("if (@x = 1) begin set @z = 20 end else begin set @z = 10 / @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@z", SqlDataType.Int),
+                        () => ItShouldHaveErrorMessages(Messages.DivideByZero)
+                    );
+                });
+            };
+
+            context["In Expressions"] = () =>
             {
-                AndVerifyingWithTopFrame(
-                    new StackFrame()
-                        .WithSymbol("@x", SqlDataType.Int)
-                        .WithSymbol("@z", SqlDataType.Int),
-                    () => ItShouldHaveErrorMessages(Messages.DivideByZero)
-                );
-            });
+                // Good: Full check that @x has the same memebers as @y
+                GivenSql("if (@x in (1, 2, 3)) begin set @y = @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1, 2, 3)),
+                        () => ItShouldHaveNoIssues()
+                    );
+                });
+
+                // Good: Full check that @x has a subset of @y
+                GivenSql("if (@x in (1, 2)) begin set @y = @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1, 2, 3)),
+                        () => ItShouldHaveNoIssues()
+                    );
+                });
+
+                // Error: @x has a superset of @y. That should not fly.
+                GivenSql("if (@x in (1, 2, 3, 4)) begin set @y = @x end;", () =>
+                {
+                    AndVerifyingWithTopFrame(
+                        new StackFrame()
+                            .WithSymbol("@x", SqlDataType.Int)
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1, 2, 3)),
+                        () => ItShouldHaveIssuesOnLines(1)
+                    );
+                });
+            };
+
         }
-
         public void describe_BinaryExpression()
         {
             ExpectSqlToBeFine("select 1 + 2");

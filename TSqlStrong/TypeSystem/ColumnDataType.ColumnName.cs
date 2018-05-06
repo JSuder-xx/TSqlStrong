@@ -25,7 +25,7 @@ namespace TSqlStrong.TypeSystem
                 public virtual ITry<Unit> IsAssignableTo(Base columnName) => 
                     Try.SuccessUnit;
 
-                public abstract bool Matches(string name);
+                public abstract bool Matches(string name);                    
             }
 
             /// <summary>
@@ -40,6 +40,9 @@ namespace TSqlStrong.TypeSystem
                 public override string ToString() => "_";
 
                 public override bool Matches(string name) => false;
+
+                public override bool Equals(Object other) =>
+                    other is Anonymous ? true : base.Equals(other);
             }
 
             /// <summary>
@@ -59,6 +62,11 @@ namespace TSqlStrong.TypeSystem
                 public override bool Matches(string name) => _caseSensitivity.AreEqual(name, Name);
 
                 public string Name => _val;
+
+                public override bool Equals(Object other) =>
+                    other is BaseNamedColumn otherAsNamed 
+                        ? Matches(otherAsNamed.Name)
+                        : base.Equals(other);
             }
 
             /// <summary>

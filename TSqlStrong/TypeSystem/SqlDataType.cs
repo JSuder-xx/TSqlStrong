@@ -86,6 +86,20 @@ namespace TSqlStrong.TypeSystem
 
     public static class SqlDataTypeOptionExtensions
     {
+        public static bool IsNumeric(this ScriptDom.SqlDataTypeOption source) =>
+            // TODO: Might make sense to put in a dictionary
+            (source == ScriptDom.SqlDataTypeOption.BigInt)
+            || (source == ScriptDom.SqlDataTypeOption.Bit)
+            || (source == ScriptDom.SqlDataTypeOption.Decimal)
+            || (source == ScriptDom.SqlDataTypeOption.Float)
+            || (source == ScriptDom.SqlDataTypeOption.Int)
+            || (source == ScriptDom.SqlDataTypeOption.Money)
+            || (source == ScriptDom.SqlDataTypeOption.Numeric)
+            || (source == ScriptDom.SqlDataTypeOption.Real)
+            || (source == ScriptDom.SqlDataTypeOption.SmallInt)
+            || (source == ScriptDom.SqlDataTypeOption.SmallMoney)
+            || (source == ScriptDom.SqlDataTypeOption.TinyInt);
+
         public static bool CanAssignTo(this ScriptDom.SqlDataTypeOption source, ScriptDom.SqlDataTypeOption dest) =>
             (source == dest)
             || ((source == ScriptDom.SqlDataTypeOption.VarChar) && (dest == ScriptDom.SqlDataTypeOption.NVarChar))

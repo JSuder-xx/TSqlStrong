@@ -39,3 +39,8 @@ from
     -- ERROR: Incorrect # arguments
     PersonsWithLastName('Smith', 'John');
 
+select 
+    -- ERROR: lastNameXYZ not returned by TVF
+    firstName, lastNameXYZ
+from
+    PersonsWithLastName('SMITH');

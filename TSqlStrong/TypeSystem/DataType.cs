@@ -73,22 +73,43 @@ namespace TSqlStrong.TypeSystem
 
         public static IMaybe<DataType> Disjunction(DataType left, DataType right)
         {
+            if ((left is ColumnDataType leftColumn) && (right is ColumnDataType rightColumn) && leftColumn.Name.Equals(rightColumn.Name))
+                return Disjunction(GetInnerType(left), GetInnerType(right)).Select((dataType) =>
+                    new ColumnDataType(
+                        leftColumn.Name,
+                        dataType
+                    )
+                );
+
+            if ((left is ColumnDataType) || (right is ColumnDataType))
+                return Disjunction(GetInnerType(left), GetInnerType(right)).Select((dataType) =>
+                    new ColumnDataType(
+                        ColumnDataType.ColumnName.Anonymous.Instance,
+                        dataType
+                    )
+                );
+
             if ((left is SqlDataTypeWithKnownSet leftWellKnown) 
                 && (right is SqlDataTypeWithKnownSet rightWellKnown) 
                 && (rightWellKnown.Include) && (leftWellKnown.Include)
                 && (leftWellKnown.SqlDataTypeOption == rightWellKnown.SqlDataTypeOption))
                 return Return(leftWellKnown.UnionWith(rightWellKnown) as DataType);
+
             if ((left is NullDataType) && (right is NullDataType))
                 return Return(NullDataType.Instance);
+
             if (left is NullDataType)
                 return Return(right.ToNullable());
+
             if (right is NullDataType)
                 return Return(left.ToNullable());
+
             if ((left is NullableDataType) || (right is NullableDataType))
                 return Disjunction(
                     GetInnerType(left),
                     GetInnerType(right)
                 ).Select(it => it.ToNullable());
+
             if ((left is SqlDataType leftSqlType) 
                 && (right is SqlDataType rightSqlType)
                 && (leftSqlType.SqlDataTypeOption == rightSqlType.SqlDataTypeOption))
@@ -96,7 +117,10 @@ namespace TSqlStrong.TypeSystem
 
             return None();
 
-            DataType GetInnerType(DataType dataType) => dataType is NullableDataType asNullable ? GetInnerType(asNullable.DataType) : dataType;
+            DataType GetInnerType(DataType dataType) => 
+                dataType is NullableDataType asNullable ? GetInnerType(asNullable.DataType) 
+                : dataType is ColumnDataType asColumn ? asColumn.DataType
+                : dataType;
             IMaybe<DataType> Return(DataType dataType) => dataType.ToMaybe();
             IMaybe<DataType> None() => Maybe.None<DataType>();
         }

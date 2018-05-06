@@ -434,7 +434,8 @@ namespace TSqlStrong.Ast
                 if (node.WhereClause != null)
                 {
                     _diagnosticLogger.Enter("WhereClause");
-                    node.WhereClause.Accept(this);
+                    var (_, whereResult) = VisitAndReturnResults(node.WhereClause);
+                    //_currentFrame = _currentFrame.NewFrameFromRefinements(whereResult.RefinementCases.Positive.Refinements);
                     _diagnosticLogger.Exit("WhereClause");
                 }
 
@@ -912,6 +913,49 @@ namespace TSqlStrong.Ast
 
         }
 
+        public override void ExplicitVisit(InPredicate node)
+        {
+            if (node.Subquery != null)
+            {
+                LogIssue(node, IssueLevel.Info, "SubQueries are not yet support.");
+                return;
+            }
+           
+            var (_, expressionResult) = VisitAndReturnResults(node.Expression);
+            var valueResults = node.Values.Select(scalarValueNode => (scalarValueNode, VisitAndReturnResults(scalarValueNode).expressionResult.TypeOfExpression));
+
+            // Perform disjunction on all the results of the members of the in list. Report an error if any do not below.
+            var inListDataType = valueResults.Aggregate(
+                valueResults.First().TypeOfExpression,
+                (acc, cur) =>
+                    DataType.Disjunction(acc, cur.TypeOfExpression)
+                        .Coalesce(() =>
+                            LogIssueAndReturn(
+                                cur.scalarValueNode,
+                                IssueLevel.Error,
+                                Messages.UnableToJoinTypes(acc.ToString(), cur.TypeOfExpression.ToString()),
+                                UnknownDataType.Instance
+                            )
+                        )
+            );
+
+            // Report an error if the expression types is not comparable with the dervised list type.
+            expressionResult.TypeOfExpression.CanCompareWith(inListDataType)
+                .DoError(error => LogError(node, error));
+
+            var positiveRefinementSet = new RefinementSet(RefineSymbolForEquality(expressionResult, inListDataType));
+            var negativeRefinementSet = new RefinementSet(RefineSymbolForInEquality(expressionResult, inListDataType));
+
+            _lastExpressionResult = new ExpressionResult(
+                SymbolReference.None,
+                SqlDataType.Bit,
+                new RefinementSetCases(
+                    positive: positiveRefinementSet,
+                    negative: negativeRefinementSet
+                )
+            );
+        }
+
         public override void ExplicitVisit(BooleanComparisonExpression node)
         {
             _diagnosticLogger.Enter("BooleanComparisonExpression");
@@ -925,12 +969,12 @@ namespace TSqlStrong.Ast
                     .DoError(error => LogError(node, error));
 
                 var positiveRefinementSet = new RefinementSet(
-                    RefineSymbolForEquality(leftResult, rightResult)
-                    .Concat(RefineSymbolForEquality(rightResult, leftResult))
+                    RefineSymbolForEquality(leftResult, rightResult.TypeOfExpression)
+                    .Concat(RefineSymbolForEquality(rightResult, leftResult.TypeOfExpression))
                 );                    
                 var negativeRefinementSet = new RefinementSet(
-                    RefineSymbolForInEquality(leftResult, rightResult)
-                    .Concat(RefineSymbolForInEquality(rightResult, leftResult))
+                    RefineSymbolForInEquality(leftResult, rightResult.TypeOfExpression)
+                    .Concat(RefineSymbolForInEquality(rightResult, leftResult.TypeOfExpression))
                 );
 
                 var isEqual = node.ComparisonType == BooleanComparisonType.Equals;
@@ -963,6 +1007,18 @@ namespace TSqlStrong.Ast
                 _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(SqlDataType.Bit);
 
             _diagnosticLogger.Exit();
+        }
+
+        public override void ExplicitVisit(UnaryExpression node)
+        {
+            var (_, result) = VisitAndReturnResults(node.Expression);
+
+            _lastExpressionResult = (node.UnaryExpressionType == UnaryExpressionType.Negative)
+                && (result.TypeOfExpression is SqlDataTypeWithKnownSet knownSet)
+                && (knownSet.Values.Count() == 1)
+                && (knownSet.SqlDataTypeOption.IsNumeric())
+                    ? _lastExpressionResult.WithNewTypeOfExpression(knownSet.NegateNumericValues())
+                    : _lastExpressionResult;            
         }
 
         public override void ExplicitVisit(BinaryExpression node)
@@ -1125,8 +1181,8 @@ namespace TSqlStrong.Ast
 
                 var currentRefinementCases = canRefineInputSymbolReference
                     ? new RefinementSetCases(
-                        new RefinementSet(RefineSymbolForEquality(inputExpressionResult, whenValueExpressionResult)),
-                        new RefinementSet(RefineSymbolForInEquality(inputExpressionResult, whenValueExpressionResult))
+                        new RefinementSet(RefineSymbolForEquality(inputExpressionResult, whenValueExpressionResult.TypeOfExpression)),
+                        new RefinementSet(RefineSymbolForInEquality(inputExpressionResult, whenValueExpressionResult.TypeOfExpression))
                     )
                     : null;
 
@@ -1617,14 +1673,14 @@ namespace TSqlStrong.Ast
             );
         }
 
-        private static IEnumerable<Refinement> RefineSymbolForEquality(ExpressionResult potentialSymbolCandidate, ExpressionResult otherExpression) =>
-            (potentialSymbolCandidate.SymbolReference != SymbolReference.None) && (potentialSymbolCandidate.TypeOfExpression.SizeOfDomain > otherExpression.TypeOfExpression.SizeOfDomain)
-                ? new Refinement(potentialSymbolCandidate.SymbolReference, otherExpression.TypeOfExpression).ToEnumerable()
+        private static IEnumerable<Refinement> RefineSymbolForEquality(ExpressionResult potentialSymbolCandidate, DataType dataType) =>
+            (potentialSymbolCandidate.SymbolReference != SymbolReference.None) && (potentialSymbolCandidate.TypeOfExpression.SizeOfDomain > dataType.SizeOfDomain)
+                ? new Refinement(potentialSymbolCandidate.SymbolReference, dataType).ToEnumerable()
                 : new Refinement[] { };
 
-        private static IEnumerable<Refinement> RefineSymbolForInEquality(ExpressionResult potentialSymbolCandidate, ExpressionResult otherExpression) =>
+        private static IEnumerable<Refinement> RefineSymbolForInEquality(ExpressionResult potentialSymbolCandidate, DataType dataType) =>
             (potentialSymbolCandidate.SymbolReference != SymbolReference.None)
-                ? new Refinement(potentialSymbolCandidate.SymbolReference, DataType.Subtract(potentialSymbolCandidate.TypeOfExpression, otherExpression.TypeOfExpression)).ToEnumerable()
+                ? new Refinement(potentialSymbolCandidate.SymbolReference, DataType.Subtract(potentialSymbolCandidate.TypeOfExpression, dataType)).ToEnumerable()
                 : new Refinement[] { };
 
         private void ExpectTypeEvaluatingExpression<TValue, TExpected>(TSqlFragment node, Func<TValue, string> errorMessage, TValue val, Action<TExpected> whenOfProperType)

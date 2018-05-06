@@ -99,6 +99,17 @@ select
 from
     @PersonLocal pl;
 
+-- OK: We can also use an _in_ to vouch for genderUnchecked. 
+-- TRY IT: Change one of the values to be something other than what is acceptable and see what T-SQL Strong says.
+insert into Person (gender)
+select 
+    (case 
+        when pl.genderUnchecked in ('male', 'female', 'other') then pl.genderUnchecked
+        else 'unknown'
+    end)
+from
+    @PersonLocal pl;
+
 
 /* -----------------------------------------------------------------------------
 Refinement By If Expression
