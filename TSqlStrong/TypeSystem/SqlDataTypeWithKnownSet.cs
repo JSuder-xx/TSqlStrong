@@ -31,22 +31,22 @@ namespace TSqlStrong.TypeSystem
             _include = include;
         }
 
-        public new static SqlDataTypeWithKnownSet Int(params int[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Int);
-        public static SqlDataTypeWithKnownSet IntExclude(params int[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Int);
+        public static SqlDataTypeWithKnownSet IntIncludingSet(params int[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Int);
+        public static SqlDataTypeWithKnownSet IntExcludingSet(params int[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Int);
 
-        public new static SqlDataTypeWithKnownSet VarChar(params string[] set) => new SqlDataTypeWithKnownSet(true, set, ScriptDom.SqlDataTypeOption.VarChar);
-        public static SqlDataTypeWithKnownSet VarCharExclude(params string[] set) => new SqlDataTypeWithKnownSet(false, set, ScriptDom.SqlDataTypeOption.VarChar);
+        public static SqlDataTypeWithKnownSet VarCharIncludingSet(params string[] set) => new SqlDataTypeWithKnownSet(true, set, ScriptDom.SqlDataTypeOption.VarChar);
+        public static SqlDataTypeWithKnownSet VarCharExcludingSet(params string[] set) => new SqlDataTypeWithKnownSet(false, set, ScriptDom.SqlDataTypeOption.VarChar);
 
-        public new static SqlDataTypeWithKnownSet NVarChar(params string[] set) => new SqlDataTypeWithKnownSet(true, set, ScriptDom.SqlDataTypeOption.NVarChar);
+        public static SqlDataTypeWithKnownSet NVarCharIncludingSet(params string[] set) => new SqlDataTypeWithKnownSet(true, set, ScriptDom.SqlDataTypeOption.NVarChar);
 
-        public new static SqlDataTypeWithKnownSet Numeric(params decimal[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Decimal);
-        public static SqlDataTypeWithKnownSet NumericExclude(params decimal[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Decimal);
+        public static SqlDataTypeWithKnownSet NumericIncludingSet(params decimal[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Decimal);
+        public static SqlDataTypeWithKnownSet NumericExcludingSet(params decimal[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Decimal);
 
-        public new static SqlDataTypeWithKnownSet Money(params decimal[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Money);
-        public static SqlDataTypeWithKnownSet MoneyExclude(params decimal[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Money);
+        public static SqlDataTypeWithKnownSet MoneyIncludingSet(params decimal[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Money);
+        public static SqlDataTypeWithKnownSet MoneyExcludingSet(params decimal[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Money);
 
-        public static SqlDataTypeWithKnownSet Real(params double[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Float);
-        public static SqlDataTypeWithKnownSet RealExclude(params double[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Float);
+        public static SqlDataTypeWithKnownSet RealIncludingSet(params double[] set) => new SqlDataTypeWithKnownSet(true, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Float);
+        public static SqlDataTypeWithKnownSet RealExcludingSet(params double[] set) => new SqlDataTypeWithKnownSet(false, set.Cast<Object>(), ScriptDom.SqlDataTypeOption.Float);
 
         #endregion
 

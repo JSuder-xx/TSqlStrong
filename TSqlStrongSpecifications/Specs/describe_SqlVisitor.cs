@@ -529,7 +529,7 @@ from
                         StackFrameDefinitions.withMasterAndDetail,
                         () => ItShouldHaveErrorMessages(Messages.CannotCompareInequality(
                             TableDefinitions.NullableInt.ToString(),
-                            SqlDataTypeWithKnownSet.Int(10).ToString()
+                            SqlDataTypeWithKnownSet.IntIncludingSet(10).ToString()
                         ))
                     );
                 });
@@ -937,7 +937,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1))
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1))
                             .WithSymbol("@z", SqlDataType.Int),
                         () => ItShouldHaveNoIssues()
                     );
@@ -948,9 +948,9 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1))
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1))
                             .WithSymbol("@z", SqlDataType.Int),
-                        () => ItShouldHaveErrorMessages(Messages.CannotAssignTo(SqlDataTypeWithKnownSet.Int(2).ToString(), SqlDataTypeWithKnownSet.Int(1).ToString()))
+                        () => ItShouldHaveErrorMessages(Messages.CannotAssignTo(SqlDataTypeWithKnownSet.IntIncludingSet(2).ToString(), SqlDataTypeWithKnownSet.IntIncludingSet(1).ToString()))
                     );
                 });
 
@@ -983,7 +983,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1, 2, 3)),
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3)),
                         () => ItShouldHaveNoIssues()
                     );
                 });
@@ -994,7 +994,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1, 2, 3)),
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3)),
                         () => ItShouldHaveNoIssues()
                     );
                 });
@@ -1005,7 +1005,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.Int(1, 2, 3)),
+                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3)),
                         () => ItShouldHaveIssuesOnLines(1)
                     );
                 });
@@ -1622,7 +1622,7 @@ DEALLOCATE vendor_cursor;
 
         class DataTypeDefinitions
         {
-            public static readonly DataType Fruit = SqlDataTypeWithKnownSet.VarChar("apples", "oranges", "bananas");
+            public static readonly DataType Fruit = SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges", "bananas");
         }
         
         class TableDefinitions

@@ -1257,7 +1257,7 @@ namespace TSqlStrong.Ast
         public override void Visit(IntegerLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.Int(Convert.ToInt32(node.Value)));
+            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.IntIncludingSet(Convert.ToInt32(node.Value)));
         }
 
         public override void Visit(StringLiteral node)
@@ -1265,8 +1265,8 @@ namespace TSqlStrong.Ast
             base.Visit(node);
             _lastExpressionResult = new ExpressionResult(
                 node.IsNational
-                    ? SqlDataTypeWithKnownSet.NVarChar(node.Value)
-                    : SqlDataTypeWithKnownSet.VarChar(node.Value)
+                    ? SqlDataTypeWithKnownSet.NVarCharIncludingSet(node.Value)
+                    : SqlDataTypeWithKnownSet.VarCharIncludingSet(node.Value)
             );
         }
 
@@ -1279,19 +1279,19 @@ namespace TSqlStrong.Ast
         public override void Visit(NumericLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.Numeric(Convert.ToDecimal(node.Value)));
+            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.NumericIncludingSet(Convert.ToDecimal(node.Value)));
         }
 
         public override void Visit(RealLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.Real(Convert.ToDouble(node.Value)));
+            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.RealIncludingSet(Convert.ToDouble(node.Value)));
         }
 
         public override void Visit(MoneyLiteral node)
         {
             base.Visit(node);            
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.Money(Convert.ToDecimal(node.Value)));
+            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.MoneyIncludingSet(Convert.ToDecimal(node.Value)));
         }
 
         public override void Visit(GlobalVariableExpression node)

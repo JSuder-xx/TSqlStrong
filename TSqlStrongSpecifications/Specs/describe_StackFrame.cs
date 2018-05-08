@@ -55,7 +55,7 @@ namespace TSqlStrongSpecifications
                     _frame = new StackFrame() 
                         .WithSymbol("myInt", SqlDataType.Int)
                         .WithSymbol("myOtherInt", SqlDataType.Int)
-                        .WithSymbol("myVarCharEnum", SqlDataTypeWithKnownSet.VarChar("Apples", "Oranges", "Bananas"))
+                        .WithSymbol("myVarCharEnum", SqlDataTypeWithKnownSet.VarCharIncludingSet("Apples", "Oranges", "Bananas"))
                         .WithSymbol("myRow", RowBuilder.WithAliasedColumn("id", SqlDataType.Int).AndAliasedColumn("count", SqlDataType.Int).CreateRow());
 
                 it["Lookup(myInt) returns Some<SqlDataType>"] = () =>

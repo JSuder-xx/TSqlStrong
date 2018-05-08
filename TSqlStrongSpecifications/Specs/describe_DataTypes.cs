@@ -26,12 +26,12 @@ namespace TSqlStrongSpecifications
             {
                 context["with a known set"] = () =>
                 {
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarChar("apples", "oranges"), SqlDataType.VarChar);
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarChar("apples", "oranges"), SqlDataTypeWithKnownSet.VarChar("apples"));
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarChar("apples"), SqlDataTypeWithKnownSet.VarChar("apples", "oranges"));
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges"), SqlDataType.VarChar);
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges"), SqlDataTypeWithKnownSet.VarCharIncludingSet("apples"));
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples"), SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges"));
 
-                    BadTypeComparison(SqlDataTypeWithKnownSet.VarChar("apples"), SqlDataTypeWithKnownSet.VarChar("oranges"));
-                    BadTypeComparison(SqlDataTypeWithKnownSet.VarChar("apples", "bananas"), SqlDataTypeWithKnownSet.VarChar("oranges", "grapes"));
+                    BadTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples"), SqlDataTypeWithKnownSet.VarCharIncludingSet("oranges"));
+                    BadTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "bananas"), SqlDataTypeWithKnownSet.VarCharIncludingSet("oranges", "grapes"));
                 };
             };
 
@@ -41,7 +41,7 @@ namespace TSqlStrongSpecifications
                 {
                     GoodTypeComparison(SqlDataType.Int, new SqlDataType(ScriptDom.SqlDataTypeOption.Int));
                     GoodTypeComparison(SqlDataType.Int, SqlDataTypeWithDomain.Int("X"));
-                    GoodTypeComparison(SqlDataType.Int, SqlDataTypeWithKnownSet.Int(1, 2));
+                    GoodTypeComparison(SqlDataType.Int, SqlDataTypeWithKnownSet.IntIncludingSet(1, 2));
 
                     BadTypeComparison(SqlDataType.Int, SqlDataType.VarChar);
                     BadTypeComparison(SqlDataType.Int, new RowDataType());
@@ -53,17 +53,17 @@ namespace TSqlStrongSpecifications
                     GoodTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("X"));
 
                     BadTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("Y"));
-                    GoodTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithKnownSet.Int(1, 2));
+                    GoodTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2));
                 };
 
                 context["with a known set"] = () =>
                 {
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataType.Int);
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.Int(1), SqlDataTypeWithKnownSet.Int(1, 2), "you can compare two sets so long as one is a subset of the other");
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataTypeWithKnownSet.Int(1), "you can compare two sets so long as one is a subset of the other");
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataType.Int);
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), "you can compare two sets so long as one is a subset of the other");
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(1), "you can compare two sets so long as one is a subset of the other");
 
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataTypeWithDomain.Int("X"), "cannot compare a known fixed set with a named domain");
-                    BadTypeComparison(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataTypeWithKnownSet.Int(3, 4), "cannot compare two entirely disjoint sets");
+                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithDomain.Int("X"), "cannot compare a known fixed set with a named domain");
+                    BadTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(3, 4), "cannot compare two entirely disjoint sets");
                 };
             };
 
@@ -73,12 +73,12 @@ namespace TSqlStrongSpecifications
                 GoodTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataType.VarChar), SqlDataType.VarChar);
                 GoodTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Aliased("x", CaseSensitivity.CaseInsensitive), SqlDataType.Int), SqlDataType.Int);
                 GoodTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Schema("x", CaseSensitivity.CaseInsensitive), SqlDataType.Int), SqlDataType.Int);
-                GoodTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataTypeWithKnownSet.VarChar("x", "y", "z")), SqlDataTypeWithKnownSet.VarChar("x"));
+                GoodTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataTypeWithKnownSet.VarCharIncludingSet("x", "y", "z")), SqlDataTypeWithKnownSet.VarCharIncludingSet("x"));
 
                 BadTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataType.VarChar), SqlDataType.Int);
                 BadTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Aliased("x", CaseSensitivity.CaseInsensitive), SqlDataType.VarChar), SqlDataType.Int);
                 BadTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Schema("x", CaseSensitivity.CaseInsensitive), SqlDataType.VarChar), SqlDataType.Int);
-                BadTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataTypeWithKnownSet.VarChar("x", "y", "z")), SqlDataTypeWithKnownSet.VarChar("q"));
+                BadTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataTypeWithKnownSet.VarCharIncludingSet("x", "y", "z")), SqlDataTypeWithKnownSet.VarCharIncludingSet("q"));
             };
         }
 
@@ -114,7 +114,7 @@ namespace TSqlStrongSpecifications
 
                     BadTypeAssignment(SqlDataType.Int, SqlDataType.VarChar);
                     BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithDomain.Int("X"), because: "there is no way to vouch for a domain");
-                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithKnownSet.Int(1, 2, 3));                    
+                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3));                    
                     BadTypeAssignment(SqlDataType.Int, new RowDataType());
                 };
 
@@ -123,18 +123,18 @@ namespace TSqlStrongSpecifications
                     GoodTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataType.Int);
                     GoodTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("X"));
 
-                    BadTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithKnownSet.Int(1, 2));
+                    BadTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2));
                     BadTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("Y"));
                 };
 
                 context["with a known set"] = () =>
                 {
-                    GoodTypeAssignment(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataType.Int);
-                    GoodTypeAssignment(SqlDataTypeWithKnownSet.Int(1), SqlDataTypeWithKnownSet.Int(1, 2), because: "you can assign a subset to a superset");
+                    GoodTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataType.Int);
+                    GoodTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), because: "you can assign a subset to a superset");
 
-                    BadTypeAssignment(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataTypeWithDomain.Int("X"));
-                    BadTypeAssignment(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataTypeWithKnownSet.Int(1), because: "cannot assign a super set to a subset");
-                    BadTypeAssignment(SqlDataTypeWithKnownSet.Int(1, 2), SqlDataTypeWithKnownSet.Int(3, 4), because: "cannot assign sets with no common elements");
+                    BadTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithDomain.Int("X"));
+                    BadTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(1), because: "cannot assign a super set to a subset");
+                    BadTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(3, 4), because: "cannot assign sets with no common elements");
                 };
             };
 
