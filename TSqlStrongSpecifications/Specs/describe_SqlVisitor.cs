@@ -25,6 +25,13 @@ namespace TSqlStrongSpecifications
         public void describe_SelectSetStatement()
         {
             ExpectSqlToHaveIssuesOnLines(
+     @"
+declare @myNarrowText varchar(10);
+select @myNarrowText = cast('123456789012345' as varchar(12));
+", 3);
+
+
+            ExpectSqlToHaveIssuesOnLines(
                 @"
 declare @myInt int;
 declare @myText varchar(100);
@@ -32,12 +39,52 @@ select @myInt = @myText;
 ",
                 4);
 
+
             ExpectSqlToBeFine(
                 @"
 declare @myInt int;
 declare @myOtherInt int;
 select @myInt = @myOtherInt;
 ");
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+declare @myNarrowText varchar(40);
+declare @myWide varchar(100);
+select @myNarrowText = @myWide;
+",
+                4);
+
+            ExpectSqlToBeFine(
+                @"
+declare @myNarrowText varchar(40);
+declare @myWide varchar(100);
+select @myWide = @myNarrowText;
+");
+
+            ExpectSqlToBeFine(
+                @"
+declare @myNarrowText varchar(10);
+select @myNarrowText = '1234567890';
+");
+
+            ExpectSqlToHaveIssuesOnLines(
+                @"
+declare @myNarrowText varchar(10);
+select @myNarrowText = '12345678901';
+", 3);
+
+            ExpectSqlToBeFine(
+                @"
+declare @myNarrowText varchar(10);
+select @myNarrowText = cast('123456789012345' as varchar(10));
+");
+
+            ExpectSqlToHaveIssuesOnLines(
+     @"
+declare @myNarrowText varchar(10);
+select @myNarrowText = cast('123456789012345' as varchar(12));
+", 3);
 
         }
 
@@ -89,7 +136,7 @@ select @myInt = @myOtherInt;
                 GivenSql("select case when 2 > 1 then 'alpha' else 'beta' end", () =>
                     AndVerifyingWithNoTopFrame(() =>
                         it["produces a column SqlDataTypeWithSet[Varchar]{alpha, beta}"] = () =>
-                            ExpectSingleColumnRow<SqlDataTypeWithKnownSet>()
+                            ExpectSingleColumnRow<KnownSetDecoratorDataType>()
                                 .Values
                                 .Cast<string>()
                                 .Should().BeEquivalentTo("alpha", "beta")
@@ -99,7 +146,7 @@ select @myInt = @myOtherInt;
                 GivenSql("select case when 2 > 1 then 'alpha' when 3 > 1 then 'beta' else 'gamma' end", () =>
                     AndVerifyingWithNoTopFrame(() =>
                         it["produces a column SqlDataTypeWithSet[Varchar]{alpha, beta, gamma}"] = () =>
-                            ExpectSingleColumnRow<SqlDataTypeWithKnownSet>()
+                            ExpectSingleColumnRow<KnownSetDecoratorDataType>()
                                 .Values
                                 .Cast<string>()
                                 .Should().BeEquivalentTo("alpha", "beta", "gamma")
@@ -111,7 +158,7 @@ select @myInt = @myOtherInt;
                         it["produces a column Nullable<SqlDataTypeWithSet[Varchar]{alpha, beta}>"] = () =>
                         {
                             var nullable = ExpectSingleColumnRow<NullableDataType>();
-                            var sqlTypeWithKnownSet = nullable.DataType.Should().BeAssignableTo<SqlDataTypeWithKnownSet>().Which;
+                            var sqlTypeWithKnownSet = nullable.DataType.Should().BeAssignableTo<KnownSetDecoratorDataType>().Which;
                             sqlTypeWithKnownSet.Values.Cast<string>().Should().BeEquivalentTo("alpha", "beta");
                         }
                     )
@@ -175,10 +222,10 @@ select @myInt = @myOtherInt;
                         FrameWithNullableIntX(),
                         () =>
                         {
-                            it["produces a column SqlDataTypeWithKnownSet{1, 2, 3, 100}"] = () =>
+                            it["produces a column KnownSetDecoratorDataType{1, 2, 3, 100}"] = () =>
                             {
-                                var knownSet = ExpectSingleColumnRow<SqlDataTypeWithKnownSet>();
-                                knownSet.SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.Int);
+                                var knownSet = ExpectSingleColumnRow<KnownSetDecoratorDataType>();
+                                (knownSet.Decorates as SqlDataType).SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.Int);
                                 knownSet.Values.Cast<int>().OrderBy(it => it).Should().BeEquivalentTo(1, 2, 3, 100);
                             };
                         }
@@ -197,13 +244,13 @@ from
     @personLocal;", () =>
                          AndVerifyingWithTopFrame(() =>
                          {
-                             it["produces a column SqlDataTypeWithKnownSet{male, female, other, unknown}"] = () =>
+                             it["produces a column KnownSetDecoratorDataType{male, female, other, unknown}"] = () =>
                              {
-                                 var knownSet = ExpectSingleColumnRow<SqlDataTypeWithKnownSet>();
-                                 knownSet.SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.VarChar);
+                                 var knownSet = ExpectSingleColumnRow<KnownSetDecoratorDataType>();
+                                 (knownSet.Decorates as SqlDataType).SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.VarChar);
                                  knownSet.Values.Cast<string>().OrderBy(it => it).Should().BeEquivalentTo("female", "male", "other", "unknown");
                              };
-                         })                
+                         })
                 );
 
             };
@@ -215,7 +262,7 @@ from
                         FrameWithNullableIntX(),
                         () =>
                         it["produces a column SqlDataTypeWithSet[Varchar]{alpha, beta, gamma}"] = () =>
-                            ExpectSingleColumnRow<SqlDataTypeWithKnownSet>()
+                            ExpectSingleColumnRow<KnownSetDecoratorDataType>()
                                 .Values
                                 .Cast<string>()
                                 .Should().BeEquivalentTo("alpha", "beta", "gamma")
@@ -229,7 +276,7 @@ from
                         it["produces a column Nullable<SqlDataTypeWithSet[Varchar]{alpha, beta}>"] = () =>
                         {
                             var nullable = ExpectSingleColumnRow<NullableDataType>();
-                            var sqlTypeWithKnownSet = nullable.DataType.Should().BeAssignableTo<SqlDataTypeWithKnownSet>().Which;
+                            var sqlTypeWithKnownSet = nullable.DataType.Should().BeAssignableTo<KnownSetDecoratorDataType>().Which;
                             sqlTypeWithKnownSet.Values.Cast<string>().Should().BeEquivalentTo("alpha", "beta");
                         }
                     )
@@ -286,7 +333,7 @@ from
                     AndVerifyingWithNoTopFrame(() =>
                         it["returns columns with type SqlDataTypeWithSet[Int], SqlDataTypeWithSet[VarChar]"] = () =>
                         {
-                            var column = ExpectSingleColumnRow<SqlDataTypeWithKnownSet>();
+                            var column = ExpectSingleColumnRow<KnownSetDecoratorDataType>();
                             column.Values.Cast<int>().Should().BeEquivalentTo(-1);
                         }
                     )
@@ -335,15 +382,36 @@ from
                 );
             };
 
+            context["cast"] = () =>
+            {
+                GivenSql("select cast('12345' as varchar(2))", () =>
+                    AndVerifyingWithNoTopFrame(() =>
+                        it["returns a single column with type of VarChar[2]"] = () =>
+                        {
+                            ExpectSingleColumnRow<SizedSqlDataType>().Size.Should().Be(2);
+                        }
+                    )
+                );
+
+                GivenSql("select cast('12345' as varchar(7))", () =>
+                    AndVerifyingWithNoTopFrame(() =>
+                        it["returns a single column with type of VarChar[7]"] = () =>
+                        {
+                            ExpectSingleColumnRow<SizedSqlDataType>().Size.Should().Be(7);
+                        }
+                    )
+                );
+            };
+
             context["union"] = () =>
             {
                 GivenSql("select 1, 'apples' union select 2, 'oranges';", () => AndVerifyingWithTopFrame(() =>
                 {
                     it["should evaluate to two columns"] = () => ExpectRowDataType().ColumnDataTypes.Count().Should().Be(2);
-                    it["and the first should be Int{1, 2}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which.Values.Should().BeEquivalentTo(1, 2);
+                    it["and the first should be Int{1, 2}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<KnownSetDecoratorDataType>().Which.Values.Should().BeEquivalentTo(1, 2);
                     it["and the second should be varchar{'apples', 'oranges'}"] = () =>
                         ExpectRowDataType().ColumnDataTypes.Second()
-                        .DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which
+                        .DataType.Should().BeOfType<KnownSetDecoratorDataType>().Which
                         .Values.Cast<string>().Should().BeEquivalentTo("apples", "oranges");
                 }));
 
@@ -353,19 +421,19 @@ from
                     it["and it should be Nullable<Int{1}>"] = () =>
                         ExpectRowDataType().ColumnDataTypes.First().DataType
                         .Should().BeOfType<NullableDataType>().Which
-                        .DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which
+                        .DataType.Should().BeOfType<KnownSetDecoratorDataType>().Which
                         .Values.Should().BeEquivalentTo(1);
                 }));
 
                 GivenSql("select 1 union select 'apples';", () => AndVerifyingWithTopFrame(() =>
                 {
-                    ItShouldHaveErrorMessages(Messages.UnableToJoinTypes("Int{1}", "VarChar{apples}"));
+                    ItShouldHaveIssuesOnLines(1);
                 }));
 
                 GivenSql("select 1, 'apples' union select 2, 'oranges' union select 3, 'pears';", () => AndVerifyingWithTopFrame(() =>
                 {
                     it["should evaluate to two columns"] = () => ExpectRowDataType().ColumnDataTypes.Count().Should().Be(2);
-                    it["and the first should be Int{1, 2, 3}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<SqlDataTypeWithKnownSet>().Which.Values.Should().BeEquivalentTo(1, 2, 3);
+                    it["and the first should be Int{1, 2, 3}"] = () => ExpectRowDataType().ColumnDataTypes.First().DataType.Should().BeOfType<KnownSetDecoratorDataType>().Which.Values.Should().BeEquivalentTo(1, 2, 3);
                 }));
             };
 
@@ -529,7 +597,7 @@ from
                         StackFrameDefinitions.withMasterAndDetail,
                         () => ItShouldHaveErrorMessages(Messages.CannotCompareInequality(
                             TableDefinitions.NullableInt.ToString(),
-                            SqlDataTypeWithKnownSet.IntIncludingSet(10).ToString()
+                            KnownSetDecoratorDataType.IntIncludingSet(10).ToString()
                         ))
                     );
                 });
@@ -657,7 +725,7 @@ as
 )
 select top 10 * from Recurse",
                 () => AndVerifyingWithTopFrame(() =>
-                {                    
+                {
                     ItShouldHaveNoIssues();
                     it["should return a row with a single Int column"] = () =>
                     {
@@ -666,7 +734,7 @@ select top 10 * from Recurse",
                         columnDataTypes.First().DataType.Should().BeOfType<SqlDataType>()
                             .Which.SqlDataTypeOption.Should().Be(ScriptDom.SqlDataTypeOption.Int);
                     };
-                })            
+                })
             );
 
             ExpectSqlToHaveIssuesOnLines(
@@ -714,7 +782,7 @@ as
 (
     select 1 as 'Value' -- OK: Alias matches.
 )
-select top 10 * from NonRecursive"                
+select top 10 * from NonRecursive"
             );
 
             ExpectSqlToHaveIssuesOnLines(
@@ -734,7 +802,7 @@ select top 10 * from NonRecursive",
         {
             GivenSql("create table Stuff (Stuff_ID int not null identity(1, 1), Name varchar(100))", () =>
             {
-                AndVerifyingWithTopFrame(                    
+                AndVerifyingWithTopFrame(
                     () =>
                     {
                         it["There should be one top level symbol that is a RowDataType with columns Stuff_ID, Name"] = () =>
@@ -749,7 +817,7 @@ select top 10 * from NonRecursive",
             GivenSql("create table Test (num int not null constraint my_constraint_name check((num = 1) or (num = 2) or (num = 3)))", () =>
             {
                 AndVerifyingWithTopFrame(
-                    () =>                     
+                    () =>
                         it["There should be one top level symbol that is a RowDataType with column num"] = () =>
                         {
                             var rowType = stackFrame.CurrentFrameSymbols
@@ -762,10 +830,10 @@ select top 10 * from NonRecursive",
                                 .BeEquivalentTo("num");
 
                             rowType.ColumnDataTypes.First().DataType
-                                .Should().BeOfType<SqlDataTypeWithKnownSet>()
+                                .Should().BeOfType<KnownSetDecoratorDataType>()
                                 .Which.Values.Should()
                                 .BeEquivalentTo(1, 2, 3);
-                        }                    
+                        }
                 );
             });
 
@@ -787,17 +855,17 @@ select top 10 * from NonRecursive",
 
                         var fruitAsNullable = dataTypes[0].Should().BeOfType<NullableDataType>().Which;
                         var fruitWellKnown = fruitAsNullable.DataType
-                            .Should().BeOfType<SqlDataTypeWithKnownSet>().Which;
+                            .Should().BeOfType<KnownSetDecoratorDataType>().Which;
                         fruitWellKnown.Values.Cast<string>().Should().BeEquivalentTo("apples", "oranges");
 
-                        dataTypes[1].Should().BeOfType<SqlDataTypeWithKnownSet>()
+                        dataTypes[1].Should().BeOfType<KnownSetDecoratorDataType>()
                             .Which.Values.Should()
                             .BeEquivalentTo(1, 2, 3);
-                    }                    
+                    }
                 );
             });
 
-            GivenSql("create table Stuff (Stuff_ID int not null identity(1, 1), Name varchar(100)); select *, 2 as Cool from Stuff", () =>            
+            GivenSql("create table Stuff (Stuff_ID int not null identity(1, 1), Name varchar(100)); select *, 2 as Cool from Stuff", () =>
                 AndVerifyingWithTopFrame(() => ItShouldReturnColumnNames("Stuff_ID", "Name", "Cool"))
             );
 
@@ -805,14 +873,14 @@ select top 10 * from NonRecursive",
                 @"create table Master (master_id int not null); 
                 create table Detail (detail_id int not null, master_id int not null foreign key references master(master_id));", () =>
             {
-                AndVerifyingWithTopFrame(                    
+                AndVerifyingWithTopFrame(
                     () => it["should return two tables"] = () =>
                     {
                         var stackSymbols = stackFrame.CurrentFrameSymbols;
                         stackSymbols.Count().Should().Be(2);
 
                         var detailRowType = stackSymbols.First(symb => symb.Key == "DETAIL").Value.ExpressionType.Should().BeOfType<RowDataType>().Which;
-                    }                    
+                    }
                 );
             });
 
@@ -836,7 +904,7 @@ create table Something (id int not null);",
             ExpectSqlToBeFine(
                 @"create table Something (id int not null);
 drop table Something;
-create table Something (id int not null);"                
+create table Something (id int not null);"
             );
 
         }
@@ -923,9 +991,9 @@ select val from @tableWithNulls where val is not null;
                     END;
     
                     RETURN 1; -- unable to join return type 
-                END;", 
+                END;",
                 3, 12
-            );                    
+            );
         }
 
         public void describe_IfStatement_And_SetVariableStatement()
@@ -937,7 +1005,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1))
+                            .WithSymbol("@y", KnownSetDecoratorDataType.IntIncludingSet(1))
                             .WithSymbol("@z", SqlDataType.Int),
                         () => ItShouldHaveNoIssues()
                     );
@@ -948,9 +1016,9 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1))
+                            .WithSymbol("@y", KnownSetDecoratorDataType.IntIncludingSet(1))
                             .WithSymbol("@z", SqlDataType.Int),
-                        () => ItShouldHaveErrorMessages(Messages.CannotAssignTo(SqlDataTypeWithKnownSet.IntIncludingSet(2).ToString(), SqlDataTypeWithKnownSet.IntIncludingSet(1).ToString()))
+                        () => ItShouldHaveErrorMessages(Messages.CannotAssignTo(KnownSetDecoratorDataType.IntIncludingSet(2).ToString(), KnownSetDecoratorDataType.IntIncludingSet(1).ToString()))
                     );
                 });
 
@@ -983,7 +1051,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3)),
+                            .WithSymbol("@y", KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3)),
                         () => ItShouldHaveNoIssues()
                     );
                 });
@@ -994,7 +1062,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3)),
+                            .WithSymbol("@y", KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3)),
                         () => ItShouldHaveNoIssues()
                     );
                 });
@@ -1005,7 +1073,7 @@ select val from @tableWithNulls where val is not null;
                     AndVerifyingWithTopFrame(
                         new StackFrame()
                             .WithSymbol("@x", SqlDataType.Int)
-                            .WithSymbol("@y", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3)),
+                            .WithSymbol("@y", KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3)),
                         () => ItShouldHaveIssuesOnLines(1)
                     );
                 });
@@ -1175,7 +1243,7 @@ from
                 18
                 );
         }
-        
+
         public void describe_ProcedureDeclaration()
         {
             ExpectSqlToBeFine(
@@ -1212,14 +1280,14 @@ exec dbo.ProcedureWithTwoParameters @First = 1, @Second = 2;
             ExpectSqlToBeFine(@"create procedure dbo.Something (@arg int) as begin select 1 end;
 go
 drop procedure dbo.Something;
-go"         );
+go");
 
             ExpectSqlToBeFine(@"create procedure dbo.Something (@arg int) as begin select 1 end;
 go
 drop procedure dbo.Something;
 go
 create procedure dbo.Something (@arg int) as begin select 1 end;
-go"         );
+go");
 
         }
 
@@ -1252,7 +1320,7 @@ end;
 GO
 "
             );
-            
+
             ExpectSqlToBeFine(
                 @"create procedure dbo.SelectFirstNameFromTemp 
 as
@@ -1325,7 +1393,7 @@ DECLARE SomeCursor CURSOR FOR
     UNION
     SELECT 2;  
 OPEN notDefined",
-                6                
+                6
             );
 
             ExpectSqlToBeFine(
@@ -1412,8 +1480,8 @@ CREATE TABLE Production.Product (
 );
 GO
 
-DECLARE @vendor_id int, @vendor_name nvarchar(50),  
-    @message nvarchar(80), @product nvarchar(50);  
+DECLARE @vendor_id int, @vendor_name nvarchar(100),  
+    @message nvarchar(80), @product nvarchar(100);  
 
 -- Vendor Products Report 
 
@@ -1561,7 +1629,7 @@ DEALLOCATE vendor_cursor;
                     stackFrame.PerformTopLevelTypeCheckOfStoredProcedures();
                     issues = functionBodyTypeIssues.Concat(visitor.Issues);
                 };
-                
+
                 expectations();
             };
         }
@@ -1622,9 +1690,9 @@ DEALLOCATE vendor_cursor;
 
         class DataTypeDefinitions
         {
-            public static readonly DataType Fruit = SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges", "bananas");
+            public static readonly DataType Fruit = KnownSetDecoratorDataType.VarCharIncludingSet("apples", "oranges", "bananas");
         }
-        
+
         class TableDefinitions
         {
             private const string masterID = "master_id";
@@ -1637,7 +1705,7 @@ DEALLOCATE vendor_cursor;
                  row.ColumnDataTypes.Select(col => col.Name is ColumnDataType.ColumnName.BaseNamedColumn named ? named.Name : String.Empty).ToArray();
 
             public static readonly RowDataType Master = RowBuilder
-                .WithSchemaNamedColumn(masterID, SqlDataTypeWithDomain.Int("Master"))
+                .WithSchemaNamedColumn(masterID, DomainDecoratorDataType.Int("Master"))
                 .AndSchemaNamedColumn(name, SqlDataType.VarChar)
                 .AndSchemaNamedColumn(nullableInt, new NullableDataType(SqlDataType.Int))
                 .CreateRow();
@@ -1646,8 +1714,8 @@ DEALLOCATE vendor_cursor;
             public static readonly DataType NullableInt = Master.FindColumn(nullableInt).GetValueOrException();
 
             public static readonly RowDataType Detail = RowBuilder
-                .WithSchemaNamedColumn(detailID, SqlDataTypeWithDomain.Int("Detail"))
-                .AndSchemaNamedColumn(masterID, SqlDataTypeWithDomain.Int("Master"))
+                .WithSchemaNamedColumn(detailID, DomainDecoratorDataType.Int("Detail"))
+                .AndSchemaNamedColumn(masterID, DomainDecoratorDataType.Int("Master"))
                 .AndSchemaNamedColumn(fruit, DataTypeDefinitions.Fruit)
                 .CreateRow();
 

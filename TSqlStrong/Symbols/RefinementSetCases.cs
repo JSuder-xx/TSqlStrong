@@ -57,7 +57,7 @@ namespace TSqlStrong.Symbols
                     right.Positive,
                     outer: (refinement) =>                         
                         // DeMorgan's
-                        refinement.DataType is TypeSystem.SqlDataTypeWithKnownSet wellKnown
+                        refinement.DataType is TypeSystem.KnownSetDecoratorDataType wellKnown
                             ? refinement.WithNewDataType(wellKnown.Invert()).ToMaybe()
                             : Maybe.None<Refinement>(),
                     inner: (reference, leftType, rightType) => Refinement.NegationOfDisjunction(reference, leftType, rightType)

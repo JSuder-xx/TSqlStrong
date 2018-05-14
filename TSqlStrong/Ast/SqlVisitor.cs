@@ -1014,9 +1014,8 @@ namespace TSqlStrong.Ast
             var (_, result) = VisitAndReturnResults(node.Expression);
 
             _lastExpressionResult = (node.UnaryExpressionType == UnaryExpressionType.Negative)
-                && (result.TypeOfExpression is SqlDataTypeWithKnownSet knownSet)
-                && (knownSet.Values.Count() == 1)
-                && (knownSet.SqlDataTypeOption.IsNumeric())
+                && (result.TypeOfExpression is KnownSetDecoratorDataType knownSet)
+                && (knownSet.Values.Count() == 1)                
                     ? _lastExpressionResult.WithNewTypeOfExpression(knownSet.NegateNumericValues())
                     : _lastExpressionResult;            
         }
@@ -1035,15 +1034,18 @@ namespace TSqlStrong.Ast
 
             leftType = NullableDataType.UnwrapIfNull(leftType);
             rightType = NullableDataType.UnwrapIfNull(rightType);
+            
+            // TODO: 1: If left and right are literals then the result _type_ should be the calculated value of the literal so that it can be used for refinement.
+            // TODO: 2. When working with numerics with scale/precision, apply the rules found https://docs.microsoft.com/en-us/sql/t-sql/data-types/precision-scale-and-length-transact-sql?view=sql-server-2017.
 
-            if (!(leftType is SqlDataType leftAsSqlType) || !(rightType is SqlDataType rightAsSqlType) || (leftAsSqlType.SqlDataTypeOption != rightAsSqlType.SqlDataTypeOption))
+            if (!(leftType.UnwrapToCore() is SqlDataType leftAsSqlType) || !(rightType.UnwrapToCore() is SqlDataType rightAsSqlType) || (leftAsSqlType.SqlDataTypeOption != rightAsSqlType.SqlDataTypeOption))
                 LogError(node, Messages.BinaryOperationWithIncompatibleTypes(leftType.ToString(), rightType.ToString()));
             else
             {
                 if (node.BinaryExpressionType == BinaryExpressionType.Divide)
                 {
                     var divisorIsNotZero = (
-                        (rightType is SqlDataTypeWithKnownSet knownSet)
+                        (rightType is KnownSetDecoratorDataType knownSet)
                         && (
                             // either if excludes zero
                             (
@@ -1067,7 +1069,7 @@ namespace TSqlStrong.Ast
                         // possible divide by zero
                         LogIssue(node.SecondExpression, IssueLevel.Warning, Messages.DivideByZero);
 
-                    _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(leftResult.TypeOfExpression);
+                    _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(leftType.UnwrapToCore());
                 }
                 else
                     _lastExpressionResult = _lastExpressionResult.WithNewTypeOfExpression(new SqlDataType(leftAsSqlType.SqlDataTypeOption));                   
@@ -1166,7 +1168,7 @@ namespace TSqlStrong.Ast
             var inputSymbolReference = inputExpressionResult.SymbolReference;
             var inputType = inputExpressionResult.TypeOfExpression;
             var canRefineInputSymbolReference = (inputSymbolReference != SymbolReference.None)
-                && ((inputType is NullableDataType) || ((inputType is SqlDataTypeWithKnownSet inputAsWellKnown) && inputAsWellKnown.Include));
+                && ((inputType is NullableDataType) || ((inputType is KnownSetDecoratorDataType inputAsWellKnown) && inputAsWellKnown.Include));
             Func<StackFrame> createCurrentFrameFromWhenRefinements =
                 canRefineInputSymbolReference
                     ? new Func<StackFrame>(() => refinementsFromWhen == null ? _currentFrame : _currentFrame.NewFrameFromRefinements(refinementsFromWhen.Positive.Refinements))
@@ -1257,7 +1259,7 @@ namespace TSqlStrong.Ast
         public override void Visit(IntegerLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.IntIncludingSet(Convert.ToInt32(node.Value)));
+            _lastExpressionResult = new ExpressionResult(KnownSetDecoratorDataType.IntIncludingSet(Convert.ToInt32(node.Value)));
         }
 
         public override void Visit(StringLiteral node)
@@ -1265,8 +1267,8 @@ namespace TSqlStrong.Ast
             base.Visit(node);
             _lastExpressionResult = new ExpressionResult(
                 node.IsNational
-                    ? SqlDataTypeWithKnownSet.NVarCharIncludingSet(node.Value)
-                    : SqlDataTypeWithKnownSet.VarCharIncludingSet(node.Value)
+                    ? KnownSetDecoratorDataType.NVarCharIncludingSet(node.Value)
+                    : KnownSetDecoratorDataType.VarCharIncludingSet(node.Value)
             );
         }
 
@@ -1279,19 +1281,19 @@ namespace TSqlStrong.Ast
         public override void Visit(NumericLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.NumericIncludingSet(Convert.ToDecimal(node.Value)));
+            _lastExpressionResult = new ExpressionResult(KnownSetDecoratorDataType.NumericIncludingSet(Convert.ToDecimal(node.Value)));
         }
 
         public override void Visit(RealLiteral node)
         {
             base.Visit(node);
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.RealIncludingSet(Convert.ToDouble(node.Value)));
+            _lastExpressionResult = new ExpressionResult(KnownSetDecoratorDataType.RealIncludingSet(Convert.ToDouble(node.Value)));
         }
 
         public override void Visit(MoneyLiteral node)
         {
             base.Visit(node);            
-            _lastExpressionResult = new ExpressionResult(SqlDataTypeWithKnownSet.MoneyIncludingSet(Convert.ToDecimal(node.Value)));
+            _lastExpressionResult = new ExpressionResult(KnownSetDecoratorDataType.MoneyIncludingSet(Convert.ToDecimal(node.Value)));
         }
 
         public override void Visit(GlobalVariableExpression node)
@@ -1604,16 +1606,17 @@ namespace TSqlStrong.Ast
             : rowDataType;
 
         private RowDataType DecorateRowDataTypeWithUniqueConstraint(string tableName, UniqueConstraintDefinition constraint, RowDataType rowDataType) =>
-            constraint.Columns.Count() != 1 ? rowDataType // we only create a domain for primary keys based off a single column
-            : Names.GetColumnNameInColumnReference(constraint.Columns.First().Column.MultiPartIdentifier.Identifiers).Let(columnName =>
-                new RowDataType(
-                    rowDataType.ColumnDataTypes.Select(ct => 
-                        ct.Name.Matches(columnName) && ct.DataType is SqlDataType dataTypeAsSqlType
-                            ? ct.WithNewDataType(new SqlDataTypeWithDomain(dataTypeAsSqlType.SqlDataTypeOption, $"{tableName}.{columnName}"))
-                            : ct
+            constraint.Columns.Count() != 1 
+                ? rowDataType // we only create a domain for primary keys based off a single column
+                : Names.GetColumnNameInColumnReference(constraint.Columns.First().Column.MultiPartIdentifier.Identifiers).Let(columnName =>
+                    new RowDataType(
+                        rowDataType.ColumnDataTypes.Select(ct => 
+                            ct.Name.Matches(columnName) 
+                                ? ct.WithNewDataType(new DomainDecoratorDataType(ct.DataType, $"{tableName}.{columnName}"))
+                                : ct
+                        )
                     )
-                )
-            );
+                );
 
         private DataType DecorateDataTypeWithConstraint(string columnName, ConstraintDefinition constraint, DataType originalDataType) =>
             (constraint is CheckConstraintDefinition asCheckConstraint) ? DecorateDataTypeWithCheckConstraint(columnName, asCheckConstraint, originalDataType)
@@ -1644,21 +1647,23 @@ namespace TSqlStrong.Ast
             // TODO: Need to verify that the referenced column is the primary key of the other table!!!
             constraint.ReferencedTableColumns.Count() != 1
                 ? originalDataType
-                : SqlDataTypeWithDomain.From(originalDataType, $"{Names.GetFullTypeName(constraint.ReferenceTableName)}.{constraint.ReferencedTableColumns.First().Value}");
+                : DomainDecoratorDataType.From(originalDataType, $"{Names.GetFullTypeName(constraint.ReferenceTableName)}.{constraint.ReferencedTableColumns.First().Value}");
 
         private DataType ResolveDataTypeReference(DataTypeReference reference) =>
-            Names.GetFullTypeName(reference.Name)
-                .Let(typeName =>
-                    SystemTypeNames.Lookup(typeName)
-                        .Coalesce(() =>
+            (reference is ParameterizedDataTypeReference asParameterized ? asParameterized.Parameters.Select(it => it.Value) : new string[] { }).Let(parameters => 
+                Names.GetFullTypeName(reference.Name).Let(typeName =>
+                    SystemTypeNames.Lookup(typeName).Match(
+                        some: (it) => it(parameters),
+                        none: () =>
                             _currentFrame == null ? UnknownDataType.Instance
                             : _currentFrame.LookupTypeOfSymbolMaybe(Names.GetFullTypeName(reference.Name))
                                 .Match<DataType>(
                                     some: id => id.ExpressionType,
                                     none: () => UnknownDataType.Instance
                                 )
-                        )
-                );
+                    )
+                )
+            );        
 
         private void CheckAssignment(
             DataType source,

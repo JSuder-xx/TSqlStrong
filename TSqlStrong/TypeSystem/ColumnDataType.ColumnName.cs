@@ -41,6 +41,11 @@ namespace TSqlStrong.TypeSystem
 
                 public override bool Matches(string name) => false;
 
+                public override int GetHashCode()
+                {
+                    return 13;
+                }
+
                 public override bool Equals(Object other) =>
                     other is Anonymous ? true : base.Equals(other);
             }
@@ -62,6 +67,11 @@ namespace TSqlStrong.TypeSystem
                 public override bool Matches(string name) => _caseSensitivity.AreEqual(name, Name);
 
                 public string Name => _val;
+
+                public override int GetHashCode()
+                {
+                    return Name.GetHashCode() * 239 + _caseSensitivity.GetHashCode();
+                }
 
                 public override bool Equals(Object other) =>
                     other is BaseNamedColumn otherAsNamed 

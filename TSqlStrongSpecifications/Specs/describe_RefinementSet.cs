@@ -52,19 +52,19 @@ namespace TSqlStrongSpecifications
             );
 
             WhenTakingConjunction(
-                of: RefinementSet.From(("x", SqlDataTypeWithKnownSet.IntExcludingSet(1, 2))),
-                with: RefinementSet.From(("x", SqlDataTypeWithKnownSet.IntExcludingSet(3, 4))),
-                itProduces: Refinement.FromVariableNames(("x", SqlDataTypeWithKnownSet.IntExcludingSet(1, 2, 3, 4)))
+                of: RefinementSet.From(("x", KnownSetDecoratorDataType.IntExcludingSet(1, 2))),
+                with: RefinementSet.From(("x", KnownSetDecoratorDataType.IntExcludingSet(3, 4))),
+                itProduces: Refinement.FromVariableNames(("x", KnownSetDecoratorDataType.IntExcludingSet(1, 2, 3, 4)))
             );
 
             WhenTakingConjunction(
-                of: RefinementSet.From(("x", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2))),
-                with: RefinementSet.From(("x", SqlDataTypeWithKnownSet.IntIncludingSet(3, 4))),
+                of: RefinementSet.From(("x", KnownSetDecoratorDataType.IntIncludingSet(1, 2))),
+                with: RefinementSet.From(("x", KnownSetDecoratorDataType.IntIncludingSet(3, 4))),
                 itProduces: Refinement.FromVariableNames()
             );
 
             WhenTakingConjunction(
-                of: RefinementSet.From(("x", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2))),
+                of: RefinementSet.From(("x", KnownSetDecoratorDataType.IntIncludingSet(1, 2))),
                 with: RefinementSet.From(("x", NullDataType.Instance)),
                 itProduces: Refinement.FromVariableNames()
             );
@@ -128,16 +128,16 @@ namespace TSqlStrongSpecifications
             WhenTakingDisjunction(
                 of: RefinementSet.From(
                     ("y", SqlDataType.VarChar),
-                    ("x", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2))
+                    ("x", KnownSetDecoratorDataType.IntIncludingSet(1, 2))
                 ),
                 with: RefinementSet.Empty,
                 itProduces: Refinement.FromVariableNames()                
             );
 
             WhenTakingDisjunction(
-                of: RefinementSet.From(("x", SqlDataTypeWithKnownSet.IntIncludingSet(1, 2))),
-                with: RefinementSet.From(("x", new NullableDataType(SqlDataTypeWithKnownSet.IntIncludingSet(3, 4)))),
-                itProduces: Refinement.FromVariableNames(("x", new NullableDataType(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3, 4))))
+                of: RefinementSet.From(("x", KnownSetDecoratorDataType.IntIncludingSet(1, 2))),
+                with: RefinementSet.From(("x", new NullableDataType(KnownSetDecoratorDataType.IntIncludingSet(3, 4)))),
+                itProduces: Refinement.FromVariableNames(("x", new NullableDataType(KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3, 4))))
             );
         }
 

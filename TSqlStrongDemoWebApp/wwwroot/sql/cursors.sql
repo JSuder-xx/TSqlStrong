@@ -30,8 +30,11 @@ CREATE TABLE Production.Product (
 );
 GO
 
-DECLARE @vendor_id int, @vendor_name nvarchar(50),  
-    @message nvarchar(80), @product nvarchar(50);  
+DECLARE @vendor_id int, 
+	@vendor_name nvarchar(100),  
+    @message nvarchar(80), 
+	-- TRY IT: Change the size of the @product variable to less than 100.
+	@product nvarchar(100);  
 
 -- Vendor Products Report 
 

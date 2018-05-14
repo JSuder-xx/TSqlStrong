@@ -20,50 +20,47 @@ namespace TSqlStrong.TypeSystem
 
         public readonly static SqlDataType Bit = new SqlDataType(ScriptDom.SqlDataTypeOption.Bit);
         public readonly static SqlDataType Int = new SqlDataType(ScriptDom.SqlDataTypeOption.Int);
-        public readonly static SqlDataType Numeric = new SqlDataType(ScriptDom.SqlDataTypeOption.Real);
-        public readonly static SqlDataType VarChar = new SqlDataType(ScriptDom.SqlDataTypeOption.VarChar);
-        public readonly static SqlDataType NVarChar = new SqlDataType(ScriptDom.SqlDataTypeOption.NVarChar);
+
+        public readonly static SqlDataType VarChar = new SizedSqlDataType(SizedDataTypeOption.VarChar);
+        public readonly static SqlDataType NVarChar = new SizedSqlDataType(SizedDataTypeOption.NVarChar);
+
+        public readonly static SqlDataType Real = new SqlDataType(ScriptDom.SqlDataTypeOption.Real);
+        public readonly static SqlDataType Decimal = new SqlDataType(ScriptDom.SqlDataTypeOption.Decimal);
+
         public readonly static SqlDataType Money = new SqlDataType(ScriptDom.SqlDataTypeOption.Money);
+
         public readonly static SqlDataType Date = new SqlDataType(ScriptDom.SqlDataTypeOption.Date);
         public readonly static SqlDataType Time = new SqlDataType(ScriptDom.SqlDataTypeOption.Time);
         public readonly static SqlDataType DateTime = new SqlDataType(ScriptDom.SqlDataTypeOption.DateTime);
-
-        public static ScriptDom.SqlDataTypeOption GetSqlDataTypeOptionFor<TCLT>()
-        {
-            var cltType = typeof(TCLT);
-            if (cltType == typeof(int))
-                return ScriptDom.SqlDataTypeOption.Int;
-            else if (cltType == typeof(string))
-                return ScriptDom.SqlDataTypeOption.VarChar;
-            else if (cltType == typeof(double))
-                return ScriptDom.SqlDataTypeOption.Real;
-            else if (cltType == typeof(decimal))
-                return ScriptDom.SqlDataTypeOption.Numeric;
-            else
-                throw new ArgumentException($"Unsupported type {cltType.FullName}");
-        }       
         
         public SqlDataType(ScriptDom.SqlDataTypeOption sqlDataType)
         {            
             _sqlDataType = sqlDataType;
         }
-        
+
         public ScriptDom.SqlDataTypeOption SqlDataTypeOption => _sqlDataType;
 
         public const int StaticWidth = Int32.MaxValue - 2;
 
         public override int SizeOfDomain => StaticWidth;
 
+        public override bool Equals(object obj) =>
+            obj is SqlDataType objAsSqlDataType 
+                ? objAsSqlDataType.SqlDataTypeOption == SqlDataTypeOption
+                : base.Equals(obj);
+
+        public override int GetHashCode() =>
+            _sqlDataType.GetHashCode();
+
         protected override ITry<Unit> OnIsAssignableTo(DataType otherType)
         {
             if (otherType is NullDataType)
                 return Try.SuccessUnit;
 
-            if (otherType is NullableDataType otherAsNullable)
-                return IsAssignableTo(otherAsNullable.DataType);
-
-            if (otherType is ColumnDataType columnDataType)
-                otherType = columnDataType.DataType;
+            if (otherType is ColumnDataType)
+                otherType = otherType.Unwrapped;
+            if (otherType is NullableDataType)
+                otherType = otherType.Unwrapped;
 
             if (otherType is SqlDataType otherSqlDataType) 
             {

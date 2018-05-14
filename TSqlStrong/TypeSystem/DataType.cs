@@ -20,7 +20,8 @@ namespace TSqlStrong.TypeSystem
         /// </summary>
         /// <param name="otherType"></param>
         /// <returns></returns>
-        public ITry<Unit> IsAssignableTo(DataType otherType) => this.OnIsAssignableTo(otherType);
+        public ITry<Unit> IsAssignableTo(DataType otherType) =>
+            this.OnIsAssignableTo(otherType);
 
         /// <summary>
         /// When this type is refining another type for type refinements. 
@@ -43,6 +44,21 @@ namespace TSqlStrong.TypeSystem
         /// <returns></returns>
         public ITry<Unit> CanCompareWith(DataType otherType) => this.OnCanCompareWith(otherType);
 
+        public virtual DataType Unwrapped => this;
+
+        /// <summary>
+        /// Keeep unwrapping a data type to get down to the inner-most type.
+        /// </summary>
+        /// <returns></returns>
+        public DataType UnwrapToCore()
+        {
+            var current = this.Unwrapped;
+            while (current.Unwrapped != current)            
+                current = current.Unwrapped;
+                            
+            return current;
+        }
+
         /// <summary>
         /// A numerical representation of the membership of this type (considered as a set). 
         /// </summary>
@@ -57,24 +73,24 @@ namespace TSqlStrong.TypeSystem
 
         public static DataType Subtract(DataType left, DataType right) =>
             (left is NullableDataType leftAsNullable) ? ((right is NullDataType) ? leftAsNullable.DataType : Subtract(leftAsNullable.DataType, right).ToNullable())
-            : (left is SqlDataTypeWithKnownSet leftAsWellKnown) && (right is SqlDataTypeWithKnownSet rightAsWellKnown) ? SqlDataTypeWithKnownSet.Difference(leftAsWellKnown, rightAsWellKnown)
-            : (left is SqlDataType) && (right is SqlDataTypeWithKnownSet rightAsWellKnown2) ? rightAsWellKnown2.Invert()
+            : (left is KnownSetDecoratorDataType leftAsWellKnown) && (right is KnownSetDecoratorDataType rightAsWellKnown) ? KnownSetDecoratorDataType.Difference(leftAsWellKnown, rightAsWellKnown)
+            : (left is SqlDataType) && (right is KnownSetDecoratorDataType rightAsWellKnown2) ? rightAsWellKnown2.Invert()
             : left;
 
         public static IMaybe<DataType> Conjunction(DataType left, DataType right) =>
-            (left is SqlDataTypeWithKnownSet leftWellKnown) && (!leftWellKnown.Include) && (right is SqlDataTypeWithKnownSet rightWellKnown) && (!rightWellKnown.Include)
-                ? Maybe.Some(SqlDataTypeWithKnownSet.Union(leftWellKnown, rightWellKnown))
+            (left is KnownSetDecoratorDataType leftWellKnown) && (!leftWellKnown.Include) && (right is KnownSetDecoratorDataType rightWellKnown) && (!rightWellKnown.Include)
+                ? Maybe.Some(KnownSetDecoratorDataType.Union(leftWellKnown, rightWellKnown))
                 : Maybe.None<DataType>();
 
         public static IMaybe<DataType> NegationOfConjunction(DataType left, DataType right) =>
-            (left is SqlDataTypeWithKnownSet leftWellKnown) && (!leftWellKnown.Include) && (right is SqlDataTypeWithKnownSet rightWellKnown) && (!rightWellKnown.Include)
-                ? Maybe.Some(SqlDataTypeWithKnownSet.Union(leftWellKnown, rightWellKnown).Invert())
+            (left is KnownSetDecoratorDataType leftWellKnown) && (!leftWellKnown.Include) && (right is KnownSetDecoratorDataType rightWellKnown) && (!rightWellKnown.Include)
+                ? Maybe.Some(KnownSetDecoratorDataType.Union(leftWellKnown, rightWellKnown).Invert())
                 : Maybe.None<DataType>();
 
         public static IMaybe<DataType> Disjunction(DataType left, DataType right)
         {
             if ((left is ColumnDataType leftColumn) && (right is ColumnDataType rightColumn) && leftColumn.Name.Equals(rightColumn.Name))
-                return Disjunction(GetInnerType(left), GetInnerType(right)).Select((dataType) =>
+                return Disjunction(left.Unwrapped, right.Unwrapped).Select((dataType) =>
                     new ColumnDataType(
                         leftColumn.Name,
                         dataType
@@ -82,17 +98,20 @@ namespace TSqlStrong.TypeSystem
                 );
 
             if ((left is ColumnDataType) || (right is ColumnDataType))
-                return Disjunction(GetInnerType(left), GetInnerType(right)).Select((dataType) =>
+                return Disjunction(
+                    ColumnDataType.UnwrapIfColumnDataType(left), 
+                    ColumnDataType.UnwrapIfColumnDataType(right)
+                ).Select((dataType) =>
                     new ColumnDataType(
                         ColumnDataType.ColumnName.Anonymous.Instance,
                         dataType
                     )
                 );
 
-            if ((left is SqlDataTypeWithKnownSet leftWellKnown) 
-                && (right is SqlDataTypeWithKnownSet rightWellKnown) 
+            if ((left is KnownSetDecoratorDataType leftWellKnown) 
+                && (right is KnownSetDecoratorDataType rightWellKnown) 
                 && (rightWellKnown.Include) && (leftWellKnown.Include)
-                && (leftWellKnown.SqlDataTypeOption == rightWellKnown.SqlDataTypeOption))
+                && (leftWellKnown.Decorates.Equals(rightWellKnown.Decorates)))
                 return Return(leftWellKnown.UnionWith(rightWellKnown) as DataType);
 
             if ((left is NullDataType) && (right is NullDataType))
@@ -106,21 +125,17 @@ namespace TSqlStrong.TypeSystem
 
             if ((left is NullableDataType) || (right is NullableDataType))
                 return Disjunction(
-                    GetInnerType(left),
-                    GetInnerType(right)
+                    NullableDataType.UnwrapIfNull(left),
+                    NullableDataType.UnwrapIfNull(right)
                 ).Select(it => it.ToNullable());
 
-            if ((left is SqlDataType leftSqlType) 
-                && (right is SqlDataType rightSqlType)
+            if ((left.UnwrapToCore() is SqlDataType leftSqlType)
+                && (right.UnwrapToCore() is SqlDataType rightSqlType)
                 && (leftSqlType.SqlDataTypeOption == rightSqlType.SqlDataTypeOption))
-                return Return(left.SizeOfDomain > right.SizeOfDomain ? left : right);
+                return Return(leftSqlType);                
 
             return None();
 
-            DataType GetInnerType(DataType dataType) => 
-                dataType is NullableDataType asNullable ? GetInnerType(asNullable.DataType) 
-                : dataType is ColumnDataType asColumn ? asColumn.DataType
-                : dataType;
             IMaybe<DataType> Return(DataType dataType) => dataType.ToMaybe();
             IMaybe<DataType> None() => Maybe.None<DataType>();
         }

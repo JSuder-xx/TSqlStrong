@@ -47,6 +47,17 @@ namespace TSqlStrong.TypeSystem
 
         public override string ToString() => $"RowType({ColumnDataTypes.CommaDelimit()})";
 
+        public override int GetHashCode() =>
+            ColumnDataTypes.Select(ct => ct.GetHashCode()).GenerateListHashCode();
+
+        public override bool Equals(object obj) =>
+            (obj is RowDataType asRow)
+                ? (asRow.ColumnDataTypes.Count() == ColumnDataTypes.Count()) 
+                    && asRow.ColumnDataTypes
+                        .Zip(ColumnDataTypes, (otherColumn, myColumn) => (otherColumn, myColumn))
+                        .All(tup => tup.otherColumn.Equals(tup.myColumn))
+                : false;
+
         public RowDataType MapNamedColumns(Func<string, DataType, IMaybe<DataType>> mapNamedColumnType)
         {
             return new RowDataType(_columns.Select(MapColumn));

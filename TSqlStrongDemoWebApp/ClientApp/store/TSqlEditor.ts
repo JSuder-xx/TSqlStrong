@@ -74,6 +74,7 @@ export module State {
             "null_type_checking",
             "insert_safety_with_alias",
             "procedure_calls_verifying_temp_table",
+            "varchar_assignment",
             "common_table_expressions",
             "cursors",
             "inline_table_value_functions",

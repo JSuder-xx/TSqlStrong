@@ -26,12 +26,14 @@ namespace TSqlStrongSpecifications
             {
                 context["with a known set"] = () =>
                 {
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges"), SqlDataType.VarChar);
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges"), SqlDataTypeWithKnownSet.VarCharIncludingSet("apples"));
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples"), SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "oranges"));
+                    GoodTypeComparison(DomainDecoratorDataType.Int("X"), KnownSetDecoratorDataType.IntIncludingSet(1, 2));
 
-                    BadTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples"), SqlDataTypeWithKnownSet.VarCharIncludingSet("oranges"));
-                    BadTypeComparison(SqlDataTypeWithKnownSet.VarCharIncludingSet("apples", "bananas"), SqlDataTypeWithKnownSet.VarCharIncludingSet("oranges", "grapes"));
+                    GoodTypeComparison(KnownSetDecoratorDataType.VarCharIncludingSet("apples", "oranges"), SqlDataType.VarChar);
+                    GoodTypeComparison(KnownSetDecoratorDataType.VarCharIncludingSet("apples", "oranges"), KnownSetDecoratorDataType.VarCharIncludingSet("apples"));
+                    GoodTypeComparison(KnownSetDecoratorDataType.VarCharIncludingSet("apples"), KnownSetDecoratorDataType.VarCharIncludingSet("apples", "oranges"));
+
+                    BadTypeComparison(KnownSetDecoratorDataType.VarCharIncludingSet("apples"), KnownSetDecoratorDataType.VarCharIncludingSet("oranges"));
+                    BadTypeComparison(KnownSetDecoratorDataType.VarCharIncludingSet("apples", "bananas"), KnownSetDecoratorDataType.VarCharIncludingSet("oranges", "grapes"));
                 };
             };
 
@@ -40,8 +42,8 @@ namespace TSqlStrongSpecifications
                 context["without a domain"] = () =>
                 {
                     GoodTypeComparison(SqlDataType.Int, new SqlDataType(ScriptDom.SqlDataTypeOption.Int));
-                    GoodTypeComparison(SqlDataType.Int, SqlDataTypeWithDomain.Int("X"));
-                    GoodTypeComparison(SqlDataType.Int, SqlDataTypeWithKnownSet.IntIncludingSet(1, 2));
+                    GoodTypeComparison(SqlDataType.Int, DomainDecoratorDataType.Int("X"));
+                    GoodTypeComparison(SqlDataType.Int, KnownSetDecoratorDataType.IntIncludingSet(1, 2));
 
                     BadTypeComparison(SqlDataType.Int, SqlDataType.VarChar);
                     BadTypeComparison(SqlDataType.Int, new RowDataType());
@@ -49,21 +51,21 @@ namespace TSqlStrongSpecifications
 
                 context["with a domain"] = () =>
                 {
-                    GoodTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataType.Int);
-                    GoodTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("X"));
+                    GoodTypeComparison(DomainDecoratorDataType.Int("X"), SqlDataType.Int);
+                    GoodTypeComparison(DomainDecoratorDataType.Int("X"), DomainDecoratorDataType.Int("X"));
+                    GoodTypeComparison(DomainDecoratorDataType.Int("X"), KnownSetDecoratorDataType.IntIncludingSet(1, 2));
 
-                    BadTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("Y"));
-                    GoodTypeComparison(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2));
+                    BadTypeComparison(DomainDecoratorDataType.Int("X"), DomainDecoratorDataType.Int("Y"));
                 };
 
                 context["with a known set"] = () =>
                 {
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataType.Int);
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), "you can compare two sets so long as one is a subset of the other");
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(1), "you can compare two sets so long as one is a subset of the other");
+                    GoodTypeComparison(KnownSetDecoratorDataType.IntIncludingSet(1, 2), SqlDataType.Int);
+                    GoodTypeComparison(KnownSetDecoratorDataType.IntIncludingSet(1), KnownSetDecoratorDataType.IntIncludingSet(1, 2), "you can compare two sets so long as one is a subset of the other");
+                    GoodTypeComparison(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(1), "you can compare two sets so long as one is a subset of the other");
+                    GoodTypeComparison(KnownSetDecoratorDataType.IntIncludingSet(1, 2), DomainDecoratorDataType.Int("X"));
 
-                    GoodTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithDomain.Int("X"), "cannot compare a known fixed set with a named domain");
-                    BadTypeComparison(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(3, 4), "cannot compare two entirely disjoint sets");
+                    BadTypeComparison(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(3, 4), "cannot compare two entirely disjoint sets");
                 };
             };
 
@@ -73,12 +75,12 @@ namespace TSqlStrongSpecifications
                 GoodTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataType.VarChar), SqlDataType.VarChar);
                 GoodTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Aliased("x", CaseSensitivity.CaseInsensitive), SqlDataType.Int), SqlDataType.Int);
                 GoodTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Schema("x", CaseSensitivity.CaseInsensitive), SqlDataType.Int), SqlDataType.Int);
-                GoodTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataTypeWithKnownSet.VarCharIncludingSet("x", "y", "z")), SqlDataTypeWithKnownSet.VarCharIncludingSet("x"));
+                GoodTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, KnownSetDecoratorDataType.VarCharIncludingSet("x", "y", "z")), KnownSetDecoratorDataType.VarCharIncludingSet("x"));
 
                 BadTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataType.VarChar), SqlDataType.Int);
                 BadTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Aliased("x", CaseSensitivity.CaseInsensitive), SqlDataType.VarChar), SqlDataType.Int);
                 BadTypeComparison(new ColumnDataType(new ColumnDataType.ColumnName.Schema("x", CaseSensitivity.CaseInsensitive), SqlDataType.VarChar), SqlDataType.Int);
-                BadTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, SqlDataTypeWithKnownSet.VarCharIncludingSet("x", "y", "z")), SqlDataTypeWithKnownSet.VarCharIncludingSet("q"));
+                BadTypeComparison(new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, KnownSetDecoratorDataType.VarCharIncludingSet("x", "y", "z")), KnownSetDecoratorDataType.VarCharIncludingSet("q"));
             };
         }
 
@@ -89,9 +91,12 @@ namespace TSqlStrongSpecifications
                 context["without a domain"] = () =>
                 {
                     GoodTypeAssignment(SqlDataType.VarChar, SqlDataType.VarChar);
+                    GoodTypeAssignment(new SizedSqlDataType(SizedDataTypeOption.VarChar, 50), new SizedSqlDataType(SizedDataTypeOption.VarChar, 50));
+                    GoodTypeAssignment(new SizedSqlDataType(SizedDataTypeOption.VarChar, 50), new SizedSqlDataType(SizedDataTypeOption.VarChar, 100));
                     GoodTypeAssignment(SqlDataType.VarChar, SqlDataType.NVarChar, "An NVarChar can hold the representation of a VarChar");
 
                     BadTypeAssignment(SqlDataType.VarChar, SqlDataType.Int);
+                    BadTypeAssignment(new SizedSqlDataType(SizedDataTypeOption.VarChar, 100), new SizedSqlDataType(SizedDataTypeOption.VarChar, 50));
                 };
             };
 
@@ -113,38 +118,46 @@ namespace TSqlStrongSpecifications
                     GoodTypeAssignment(SqlDataType.Int, new SqlDataType(ScriptDom.SqlDataTypeOption.Int));
 
                     BadTypeAssignment(SqlDataType.Int, SqlDataType.VarChar);
-                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithDomain.Int("X"), because: "there is no way to vouch for a domain");
-                    BadTypeAssignment(SqlDataType.Int, SqlDataTypeWithKnownSet.IntIncludingSet(1, 2, 3));                    
+                    BadTypeAssignment(SqlDataType.Int, DomainDecoratorDataType.Int("X"), because: "there is no way to vouch for a domain");
+                    BadTypeAssignment(SqlDataType.Int, KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3));
                     BadTypeAssignment(SqlDataType.Int, new RowDataType());
                 };
 
                 context["with a domain"] = () =>
                 {
-                    GoodTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataType.Int);
-                    GoodTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("X"));
+                    GoodTypeAssignment(DomainDecoratorDataType.Int("X"), SqlDataType.Int);
+                    GoodTypeAssignment(DomainDecoratorDataType.Int("X"), DomainDecoratorDataType.Int("X"));
 
-                    BadTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2));
-                    BadTypeAssignment(SqlDataTypeWithDomain.Int("X"), SqlDataTypeWithDomain.Int("Y"));
+                    BadTypeAssignment(DomainDecoratorDataType.Int("X"), KnownSetDecoratorDataType.IntIncludingSet(1, 2));
+                    BadTypeAssignment(DomainDecoratorDataType.Int("X"), DomainDecoratorDataType.Int("Y"));
                 };
 
                 context["with a known set"] = () =>
                 {
-                    GoodTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataType.Int);
-                    GoodTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1), SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), because: "you can assign a subset to a superset");
+                    GoodTypeAssignment(KnownSetDecoratorDataType.IntIncludingSet(1, 2), SqlDataType.Int);
+                    GoodTypeAssignment(KnownSetDecoratorDataType.IntIncludingSet(1), KnownSetDecoratorDataType.IntIncludingSet(1, 2), because: "you can assign a subset to a superset");
 
-                    BadTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithDomain.Int("X"));
-                    BadTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(1), because: "cannot assign a super set to a subset");
-                    BadTypeAssignment(SqlDataTypeWithKnownSet.IntIncludingSet(1, 2), SqlDataTypeWithKnownSet.IntIncludingSet(3, 4), because: "cannot assign sets with no common elements");
+                    BadTypeAssignment(KnownSetDecoratorDataType.IntIncludingSet(1, 2), DomainDecoratorDataType.Int("X"));
+                    BadTypeAssignment(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(1), because: "cannot assign a super set to a subset");
+                    BadTypeAssignment(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(3, 4), because: "cannot assign sets with no common elements");
                 };
             };
 
             context["Nullable<T>"] = () =>
             {
                 GoodTypeAssignment(SqlDataType.Int, SqlDataType.Int.ToNullable());
-                GoodTypeAssignment(SqlDataTypeWithDomain.Int("x"), SqlDataTypeWithDomain.Int("x").ToNullable());
-                BadTypeAssignment(SqlDataType.Int, SqlDataType.VarChar.ToNullable());
+                GoodTypeAssignment(DomainDecoratorDataType.Int("x"), DomainDecoratorDataType.Int("x").ToNullable());
 
+                GoodTypeAssignment(SqlDataType.Int.ToNullable(), SqlDataType.Int.ToNullable());
+                GoodTypeAssignment(DomainDecoratorDataType.Int("x").ToNullable(), DomainDecoratorDataType.Int("x").ToNullable());
+
+                GoodTypeAssignment(new SizedSqlDataType(SizedDataTypeOption.VarChar, 10).ToNullable(), new SizedSqlDataType(SizedDataTypeOption.VarChar, 12).ToNullable());
+                GoodTypeAssignment(new SizedSqlDataType(SizedDataTypeOption.VarChar, 10), new SizedSqlDataType(SizedDataTypeOption.VarChar, 12).ToNullable());
+
+                BadTypeAssignment(SqlDataType.Int, SqlDataType.VarChar.ToNullable());
                 BadTypeAssignment(SqlDataType.Int.ToNullable(), SqlDataType.Int, "A null cannot fit inside of a non-null");
+
+                BadTypeAssignment(new SizedSqlDataType(SizedDataTypeOption.VarChar, 12), new SizedSqlDataType(SizedDataTypeOption.VarChar, 10).ToNullable());
             };
 
             context["ColumDataType"] = () =>
@@ -235,6 +248,85 @@ namespace TSqlStrongSpecifications
             };
         }
 
+        public void describe_Disjunction()
+        {
+            context["a type with itself"] = () =>
+            {
+                GoodDisjunction(NullDataType.Instance, NullDataType.Instance, NullDataType.Instance);
+                GoodDisjunction(SqlDataType.Int, SqlDataType.Int, SqlDataType.Int);
+            };
+
+            context["a type and null produces nullable"] = () =>
+            {
+                GoodDisjunction(SqlDataType.Int, NullDataType.Instance, SqlDataType.Int.ToNullable());
+                GoodDisjunction(SqlDataType.VarChar, NullDataType.Instance, SqlDataType.VarChar.ToNullable());
+                GoodDisjunction(
+                    KnownSetDecoratorDataType.VarCharIncludingSet("a", "b"),
+                    NullDataType.Instance,
+                    KnownSetDecoratorDataType.VarCharIncludingSet("a", "b").ToNullable()
+                );
+            };
+
+            context["columns"] = () =>
+            {
+                GoodDisjunction(
+                    new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, KnownSetDecoratorDataType.IntIncludingSet(1, 2)),
+                    KnownSetDecoratorDataType.IntIncludingSet(3, 4),
+                    new ColumnDataType(ColumnDataType.ColumnName.Anonymous.Instance, KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3, 4))
+                );
+            };
+
+            context["known set"] = () =>
+            {
+                GoodDisjunction(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(3, 4), KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3, 4));
+                GoodDisjunction(KnownSetDecoratorDataType.IntIncludingSet(1, 2), SqlDataType.Int, SqlDataType.Int);
+                GoodDisjunction(SqlDataType.Int, KnownSetDecoratorDataType.IntIncludingSet(1, 2), SqlDataType.Int);
+                GoodDisjunction(KnownSetDecoratorDataType.VarCharIncludingSet("a", "b"), KnownSetDecoratorDataType.VarCharIncludingSet("c", "d"), KnownSetDecoratorDataType.VarCharIncludingSet("a", "b", "c", "d"));
+                GoodDisjunction(
+                    KnownSetDecoratorDataType.VarCharIncludingSet("a", "b"), 
+                    KnownSetDecoratorDataType.VarCharIncludingSet("c", "d").ToNullable(), 
+                    KnownSetDecoratorDataType.VarCharIncludingSet("a", "b", "c", "d").ToNullable()
+                );
+                GoodDisjunction(KnownSetDecoratorDataType.IntExcludingSet(1, 2), KnownSetDecoratorDataType.IntExcludingSet(3, 4), SqlDataType.Int);
+            };
+
+            context["incompatible types"] = () =>
+            {
+                BadDisjunction(SqlDataType.Int, SqlDataType.VarChar);
+            };
+        }
+
+        public void describe_Conjunction()
+        {
+            context["known set"] = () =>
+            {
+                GoodConjunction(KnownSetDecoratorDataType.IntExcludingSet(1, 2), KnownSetDecoratorDataType.IntExcludingSet(3, 4), KnownSetDecoratorDataType.IntExcludingSet(1, 2, 3, 4));
+                BadConjunction(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntExcludingSet(3, 4));
+                BadConjunction(KnownSetDecoratorDataType.IntIncludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(3, 4));
+                BadConjunction(KnownSetDecoratorDataType.IntExcludingSet(1, 2), KnownSetDecoratorDataType.IntIncludingSet(3, 4));
+            };
+        }
+
+        public void describe_Subtract()
+        {
+            context["a nullable type - null produces the type"] = () =>
+            {
+                Subtraction(SqlDataType.Int.ToNullable(), NullDataType.Instance, SqlDataType.Int);
+                Subtraction(KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3).ToNullable(), NullDataType.Instance, KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3));
+                Subtraction(DomainDecoratorDataType.Int("Bob").ToNullable(), NullDataType.Instance, DomainDecoratorDataType.Int("Bob"));
+            };
+
+            context["KnownSet"] = () =>
+            {
+                Subtraction(KnownSetDecoratorDataType.IntIncludingSet(1, 2, 3), KnownSetDecoratorDataType.IntIncludingSet(1), KnownSetDecoratorDataType.IntIncludingSet(2, 3));
+            };
+
+            context["Domain"] = () =>
+            {
+                Subtraction(DomainDecoratorDataType.Int("Bob"), DomainDecoratorDataType.Int("Jane"), DomainDecoratorDataType.Int("Bob"));
+            };
+        }
+
         #endregion
 
         #region assertion helpers
@@ -277,6 +369,38 @@ namespace TSqlStrongSpecifications
             it[$"BAD: {left.ToString()} = {right.ToString()}"] = () =>
                 left.CanCompareWith(right)                                
                 .Should().NotBe(success, because);
+        }
+
+        private void GoodDisjunction(DataType left, DataType right, DataType result, string because = "")
+        {
+            it[$"GOOD: {left.ToString()} disjunction {right.ToString()} = {result.ToString()}"] = () =>
+                DataType.Disjunction(left, right).GetValueOrException().Should().Be(result);            
+        }
+
+        private void BadDisjunction(DataType left, DataType right, string because = "")
+        {
+            it[$"BAD: {left.ToString()} disjunction {right.ToString()} = Nothing"] = () =>            
+                DataType.Disjunction(left, right)
+                    .ToEnumerable().Count().Should().Be(0, because);            
+        }
+
+        private void GoodConjunction(DataType left, DataType right, DataType result, string because = "")
+        {
+            it[$"GOOD: {left.ToString()} conjunction {right.ToString()} = {result.ToString()}"] = () =>            
+                DataType.Conjunction(left, right).GetValueOrException().Should().Be(result);            
+        }
+
+        private void BadConjunction(DataType left, DataType right, string because = "")
+        {
+            it[$"BAD: {left.ToString()} conjunction {right.ToString()} = Nothing"] = () =>
+                DataType.Conjunction(left, right)
+                    .ToEnumerable().Count().Should().Be(0, because);        
+        }
+
+        private void Subtraction(DataType left, DataType right, DataType result)
+        {
+            it[$"{left.ToString()} - {right.ToString()} = ${result.ToString()}"] = () =>           
+                DataType.Subtract(left, right).Should().Be(result);            
         }
 
         #endregion

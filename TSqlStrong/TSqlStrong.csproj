@@ -67,10 +67,11 @@
     <Compile Include="TypeSystem\ColumnDataTypeExtensions.cs" />
     <Compile Include="TypeSystem\FunctionDataType.cs" />
     <Compile Include="TypeSystem\NullDataType.cs" />
-    <Compile Include="TypeSystem\SqlDataTypeWithDomain.cs" />
-    <Compile Include="TypeSystem\SqlDataTypeWithKnownSet.cs" />
+    <Compile Include="TypeSystem\DomainDecoratorDataType.cs" />
+    <Compile Include="TypeSystem\KnownSetDecoratorDataType.cs" />
     <Compile Include="TypeSystem\NullableDataType.cs" />
     <Compile Include="Ast\SqlVisitor.cs" />
+    <Compile Include="TypeSystem\SizedSqlDataType.cs" />
     <Compile Include="TypeSystem\StoredProcedureDataType.cs" />
     <Compile Include="TypeSystem\SubroutineDataType.cs" />
     <Compile Include="TypeSystem\VoidDataType.cs" />

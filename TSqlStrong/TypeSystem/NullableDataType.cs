@@ -27,6 +27,8 @@ namespace TSqlStrong.TypeSystem
 
         public override int SizeOfDomain => DataType.SizeOfDomain + 1;
 
+        public override DataType Unwrapped => DataType;
+
         public override bool Equals(object other) =>
             other is NullableDataType otherAsNullableDataType
                 ? this.DataType.Equals(otherAsNullableDataType.DataType)

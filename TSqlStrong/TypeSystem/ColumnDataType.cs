@@ -30,6 +30,14 @@ namespace TSqlStrong.TypeSystem
         public DataType DataType => _dataType;
         public IMaybe<TSqlFragment> DefiningLocationMaybe => _definingLocationMaybe;
 
+        public override bool Equals(object obj) =>
+            obj is ColumnDataType asColumnDataType
+                ? asColumnDataType.Name.Equals(Name) && asColumnDataType.DataType.Equals(DataType)
+                : false;
+
+        public override int GetHashCode() =>
+            (DataType.GetHashCode() * 37) + Name.GetHashCode();
+
         public ColumnDataType WithNewDataType(DataType dataType) =>
             new ColumnDataType(_name, dataType, _definingLocationMaybe);
 
@@ -48,6 +56,8 @@ namespace TSqlStrong.TypeSystem
         
         public override int SizeOfDomain => DataType.SizeOfDomain;
 
+        public override DataType Unwrapped => this.DataType;
+        
         public static DataType UnwrapIfColumnDataType(DataType dataType) =>
             dataType is ColumnDataType columnDataType ? columnDataType.DataType : dataType;
 

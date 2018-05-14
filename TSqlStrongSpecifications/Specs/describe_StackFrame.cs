@@ -55,7 +55,7 @@ namespace TSqlStrongSpecifications
                     _frame = new StackFrame() 
                         .WithSymbol("myInt", SqlDataType.Int)
                         .WithSymbol("myOtherInt", SqlDataType.Int)
-                        .WithSymbol("myVarCharEnum", SqlDataTypeWithKnownSet.VarCharIncludingSet("Apples", "Oranges", "Bananas"))
+                        .WithSymbol("myVarCharEnum", KnownSetDecoratorDataType.VarCharIncludingSet("Apples", "Oranges", "Bananas"))
                         .WithSymbol("myRow", RowBuilder.WithAliasedColumn("id", SqlDataType.Int).AndAliasedColumn("count", SqlDataType.Int).CreateRow());
 
                 it["Lookup(myInt) returns Some<SqlDataType>"] = () =>
@@ -78,12 +78,12 @@ namespace TSqlStrongSpecifications
                     _frame.LookupTypeOfSymbolMaybe("myVarCharEnum")
                         .Should().BeOfType<Some<SymbolTyping>>()
                         .Which.Value.ExpressionType
-                        .Should().BeOfType<SqlDataTypeWithKnownSet>()
+                        .Should().BeOfType<KnownSetDecoratorDataType>()
                         .Which.Values.Cast<string>()
                         .Should().BeEquivalentTo("Apples", "Oranges", "Bananas");
 
                 it["GetTypesInCurrentFrame<SqlDataType> should return all of the simple types"] = () =>
-                    _frame.GetReadTypesInCurrentFrame<SqlDataType>().Count().Should().Be(3);
+                    _frame.GetReadTypesInCurrentFrame<SqlDataType>().Count().Should().Be(2);
 
                 it["GetTypesInCurrentFrame<RowDataType> should return the single row"] = () =>
                     _frame.GetReadTypesInCurrentFrame<RowDataType>().Single().ColumnDataTypes.NameStrings()
@@ -93,14 +93,14 @@ namespace TSqlStrongSpecifications
                 {
                     before = () =>
                         _frame = new StackFrame(_frame)
-                            .WithSymbol("myInt", SqlDataTypeWithDomain.Int("XYZ"))
+                            .WithSymbol("myInt", DomainDecoratorDataType.Int("XYZ"))
                             .WithSymbol("myMoney", SqlDataType.Money);
 
                     it["Lookup(myInt) returns the new int type"] = () =>
                         _frame.LookupTypeOfSymbolMaybe("myInt")
                             .Should().BeOfType<Some<SymbolTyping>>()
                             .Which.Value.ExpressionType
-                            .Should().BeOfType<SqlDataTypeWithDomain>()
+                            .Should().BeOfType<DomainDecoratorDataType>()
                             .Which.Domain
                             .Should().Be("XYZ");
 

@@ -16,6 +16,7 @@ export default class Home extends React.Component<RouteComponentProps<any>, {}> 
                             <li>Check Constraints As Enumerations - Ensure only valid literals are assigned or compared against check constraint columns.</li>
                             <li>Insert Into Select Alias Matching - Protect against positional mistakes made with insert-select where you have many columns.</li>
                             <li>Verify the correctness of Temporary Table structure usage between different stored procedures.</li>
+                            <li>VarChar size checks</li>
                             <li>Flow Typing. TSqlStrong can learn more about types (refinement) by analyzing flow control (IF/ELSEIF, CASE).</li>
                         </ul>
                     </li>
@@ -31,14 +32,19 @@ export default class Home extends React.Component<RouteComponentProps<any>, {}> 
                     <li>Integrate into VS Code by building the project from GitHub and using the command line interface with the included VS Code build task.</li>
                 </ul>
             </div>
+            <h3>Next Steps</h3>
             <div>
-                The next step for the project is to build a schema importer that will load information about an existing database. 
-                
-                When complete T-SQL strong can be used to validate production code
                 <ul>
-                    <li>On developer machines from VS Code and, eventually, SQL Server Management Studio and Visual Studio.</li>
-                    <li>Integrated as part of Continuous Integration tooling</li>
-                </ul>
+                    <li>Improved type checking: Numeric data types (precision and scale). T-SQL Strong will check for both potential arithmetic overflows which cause a run-time error and also potential losses of precision when assigning one value to another.</li>
+                    <li>Completely configurable errors. Each kind of validation can be set to Error, Warning, or Ignore to suit individual needs.</li>
+                    <li>Schema importer that will load information about an existing database. When complete T-SQL strong can be used to validate code
+                        <ul>
+                            <li>On developer machines from VS Code and, eventually, SQL Server Management Studio and Visual Studio.</li>
+                            <li>Integrated as part of Continuous Integration tooling. Ensure that all code (procs, functions, etc.) is valid against the database structure.</li>
+                        </ul>
+                    </li>
+                </ul>                
+                
             </div>
         </div>;
     }
